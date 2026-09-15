@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/*
+ * Mesma paleta em tokens do Princevision, para as duas telas serem
+ * reconhecidas como a mesma casa. Se a paleta de la mudar, troque aqui junto.
+ */
+
+:root {
+  --nav: #0b0d11;
+  --fundo: #0f1116;
+  --painel: #171a22;
+  --painel-2: #20242e;
+  --borda: #2a303c;
+
+  --tinta: #e6eaf1;
+  --tinta-fraca: #98a2b3;
+
+  --marca: #2ecc55;
+  --marca-fraca: #133021;
+  --marca-tinta: #0b0d11;
+
+  --alta: #3ddc84;
+  --baixa: #ff6b6b;
+
+  --serie-1: #3987e5;
+  --serie-2: #d95926;
+  --serie-3: #199e70;
+
+  /*
+   * Status do contrato: a escala que o dashboard, a lista e o card de detalhe
+   * usam sempre na mesma ordem -- vigente, atencao, alerta, vencido, encerrado,
+   * renovado. Fica no tema, e nao escrita em cada componente, pelo mesmo
+   * motivo da paleta acima: um ajuste de tom nao pode virar busca em varios
+   * arquivos.
+   */
+  --status-vigente: #2ecc55;
+  --status-vigente-fraca: #133021;
+  --status-atencao: #e0b13a;
+  --status-atencao-fraca: #3a2f10;
+  --status-alerta: #e0812f;
+  --status-alerta-fraca: #3a2410;
+  --status-vencido: #ff6b6b;
+  --status-vencido-fraca: #3a1414;
+  --status-encerrado: #7b869c;
+  --status-encerrado-fraca: #232733;
+  --status-renovado: #3987e5;
+  --status-renovado-fraca: #12233d;
+
+  /* Roxo da paleta (opcao 5 do Princevision), usado em acentos de acao. */
+  --roxo: #a855f7;
+  --roxo-tinta: #ffffff;
+}
+
+:root[data-tema="claro"] {
+  --nav: #ffffff;
+  --fundo: #f4f6f9;
+  --painel: #ffffff;
+  --painel-2: #eef1f6;
+  --borda: #dfe5ec;
+
+  --tinta: #14202e;
+  --tinta-fraca: #5c6b7f;
+
+  --marca: #0a7c2a;
+  --marca-fraca: #e3f5e8;
+  --marca-tinta: #ffffff;
+
+  --alta: #067a26;
+  --baixa: #c4302b;
+
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+
+  --status-vigente: #0a7c2a;
+  --status-vigente-fraca: #e3f5e8;
+  --status-atencao: #a3790b;
+  --status-atencao-fraca: #fbf1d8;
+  --status-alerta: #b5570f;
+  --status-alerta-fraca: #fbe7d8;
+  --status-vencido: #c4302b;
+  --status-vencido-fraca: #fbe1e0;
+  --status-encerrado: #5c6b7f;
+  --status-encerrado-fraca: #eef1f6;
+  --status-renovado: #2a78d6;
+  --status-renovado-fraca: #e2edfb;
+}
+
+@theme {
+  --color-nav: var(--nav);
+  --color-fundo: var(--fundo);
+  --color-painel: var(--painel);
+  --color-painel-2: var(--painel-2);
+  --color-borda: var(--borda);
+  --color-tinta: var(--tinta);
+  --color-tinta-fraca: var(--tinta-fraca);
+  --color-marca: var(--marca);
+  --color-marca-fraca: var(--marca-fraca);
+  --color-marca-tinta: var(--marca-tinta);
+  --color-alta: var(--alta);
+  --color-baixa: var(--baixa);
+
+  --color-status-vigente: var(--status-vigente);
+  --color-status-vigente-fraca: var(--status-vigente-fraca);
+  --color-status-atencao: var(--status-atencao);
+  --color-status-atencao-fraca: var(--status-atencao-fraca);
+  --color-status-alerta: var(--status-alerta);
+  --color-status-alerta-fraca: var(--status-alerta-fraca);
+  --color-status-vencido: var(--status-vencido);
+  --color-status-vencido-fraca: var(--status-vencido-fraca);
+  --color-status-encerrado: var(--status-encerrado);
+  --color-status-encerrado-fraca: var(--status-encerrado-fraca);
+  --color-status-renovado: var(--status-renovado);
+  --color-status-renovado-fraca: var(--status-renovado-fraca);
+
+  --color-roxo: var(--roxo);
+  --color-roxo-tinta: var(--roxo-tinta);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(110% 70% at 50% 0%, #191d27 0%, rgba(25, 29, 39, 0) 60%),
+    var(--fundo);
+  background-attachment: fixed;
+  color: var(--tinta);
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-tema='claro'] body {
+  background:
+    radial-gradient(110% 70% at 50% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
+    var(--fundo);
+}
+
+* {
+  scrollbar-color: var(--borda) transparent;
+  scrollbar-width: thin;
+}
+
+/* Menu lateral solido, so com uma sombra separando ele do conteudo. */
+.menu-degrade {
+  background: var(--nav);
+  box-shadow: 6px 0 24px -4px rgba(0, 0, 0, 0.6);
+}
+
+/*
+ * Fundo da tela de login: luz verde nascendo no topo, apagando para o fundo
+ * escuro do app -- a moldura ao redor do card nao pode ficar preto chapado.
+ * Fallback solido para navegadores sem `color-mix` (sem ele o degrade de cor
+ * simplesmente nao aparecia, ficando preto -- ja aconteceu no menu lateral).
+ */
+.login-fundo {
+  background:
+    radial-gradient(120% 60% at 50% 0%, #163524 0%, transparent 60%),
+    radial-gradient(120% 60% at 50% 100%, #163524 0%, transparent 60%),
+    var(--fundo);
+}
+
+@supports (color: color-mix(in srgb, red, red)) {
+  .login-fundo {
+    background:
+      radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--marca) 22%, var(--fundo)) 0%, transparent 60%),
+      radial-gradient(120% 60% at 50% 100%, color-mix(in srgb, var(--marca) 22%, var(--fundo)) 0%, transparent 60%),
+      var(--fundo);
+  }
+}
+
+/*
+ * O popup nativo de um <select> nao herda cor do card por baixo -- sem isto
+ * ele abre branco (tema do sistema operacional), ilegivel sobre o resto da
+ * tela escura. `color-scheme` avisa o navegador de que o proprio controle,
+ * e nao so a pagina, e escuro; painel/tinta forcam a cor certa mesmo assim.
+ */
+select {
+  color-scheme: dark;
+  background-color: var(--painel-2);
+  color: var(--tinta);
+}
+select option {
+  background-color: var(--painel-2);
+  color: var(--tinta);
+}
+:root[data-tema='claro'] select {
+  color-scheme: light;
+}
+
+.grad-card {
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--marca) 16%, var(--painel)) 0%,
+    var(--painel) 68%
+  );
+}
+
+/*
+ * Degrade dos quadros do dashboard: mesmo desenho do "grad-esmeralda" do
+ * Princevision (brilho subindo do rodape do card, fundo escuro em cima), so
+ * que na cor do proprio quadro -- `--cor-quadro` e definida inline por
+ * componente, porque cada card tem um sentido diferente (vigente, alerta,
+ * vencido...) e nao faria sentido todos ficarem verdes.
+ */
+.grad-quadro {
+  --cor-quadro: var(--marca);
+  background:
+    radial-gradient(
+      135% 95% at 50% 125%,
+      color-mix(in srgb, var(--cor-quadro) 40%, transparent) 0%,
+      color-mix(in srgb, var(--cor-quadro) 12%, transparent) 42%,
+      transparent 72%
+    ),
+    var(--painel);
+  border-color: color-mix(in srgb, var(--cor-quadro) 28%, var(--borda));
+  box-shadow: 0 22px 40px -22px color-mix(in srgb, var(--cor-quadro) 45%, transparent);
+}
+
+.menu-ativo {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--marca) 30%, var(--painel)) 0%,
+    color-mix(in srgb, var(--marca) 12%, var(--painel)) 55%,
+    color-mix(in srgb, var(--marca) 4%, var(--painel)) 100%
+  );
+  box-shadow: inset 2px 0 0 var(--marca);
+}
