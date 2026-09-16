@@ -56,6 +56,10 @@ function mascararTelefone(valor: string) {
   return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`
 }
 
+type FormUsuario = Omit<Usuario, 'id'>
+
+const FORM_VAZIO: FormUsuario = { nome: '', sobrenome: '', email: '', telefone: '', nivel: 'user' }
+
 export default function CadastroDeUsuarios() {
   const [usuarios, setUsuarios] = useState<Usuario[]>(USUARIOS_INICIAIS)
   const [nome, setNome] = useState('')
@@ -64,6 +68,12 @@ export default function CadastroDeUsuarios() {
   const [telefone, setTelefone] = useState('')
   const [nivel, setNivel] = useState<NivelUsuario>('user')
   const [erro, setErro] = useState('')
+
+  // Edição em linha: nenhum usuário editando é `null`; enquanto um estiver,
+  // a linha dele troca de texto para os mesmos campos do formulário de cima.
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [edicao, setEdicao] = useState<FormUsuario>(FORM_VAZIO)
+  const [erroEdicao, setErroEdicao] = useState('')
 
   function cadastrar(e: React.FormEvent) {
     e.preventDefault()
@@ -86,6 +96,37 @@ export default function CadastroDeUsuarios() {
 
   function remover(id: string) {
     setUsuarios((atual) => atual.filter((u) => u.id !== id))
+    if (editandoId === id) cancelarEdicao()
+  }
+
+  function iniciarEdicao(u: Usuario) {
+    setEditandoId(u.id)
+    setEdicao({ nome: u.nome, sobrenome: u.sobrenome, email: u.email, telefone: u.telefone, nivel: u.nivel })
+    setErroEdicao('')
+  }
+
+  function cancelarEdicao() {
+    setEditandoId(null)
+    setEdicao(FORM_VAZIO)
+    setErroEdicao('')
+  }
+
+  function salvarEdicao(id: string) {
+    const emailJaExiste = usuarios.some(
+      (u) => u.id !== id && u.email.toLowerCase() === edicao.email.trim().toLowerCase(),
+    )
+    if (emailJaExiste) {
+      setErroEdicao('Já existe um usuário cadastrado com esse e-mail.')
+      return
+    }
+    setUsuarios((atual) =>
+      atual.map((u) =>
+        u.id === id
+          ? { ...u, nome: edicao.nome.trim(), sobrenome: edicao.sobrenome.trim(), email: edicao.email.trim(), telefone: edicao.telefone, nivel: edicao.nivel }
+          : u,
+      ),
+    )
+    cancelarEdicao()
   }
 
   return (
@@ -166,25 +207,101 @@ export default function CadastroDeUsuarios() {
             </tr>
           </thead>
           <tbody>
-            {usuarios.map((u) => (
-              <tr key={u.id} className="border-t border-borda hover:bg-painel-2">
-                <td className="px-4 py-2 font-medium text-tinta">{u.nome} {u.sobrenome}</td>
-                <td className="px-4 py-2 text-tinta-fraca">{u.email}</td>
-                <td className="px-4 py-2 text-tinta-fraca">{u.telefone}</td>
-                <td className="px-4 py-2">
-                  <SeloNivel nivel={u.nivel} />
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <button
-                    type="button"
-                    onClick={() => remover(u.id)}
-                    className="text-[11px] text-status-vencido hover:underline"
-                  >
-                    Remover
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {usuarios.map((u) =>
+              editandoId === u.id ? (
+                <tr key={u.id} className="border-t border-borda bg-painel-2/60">
+                  <td className="px-4 py-2">
+                    <div className="flex gap-1.5">
+                      <input
+                        value={edicao.nome}
+                        onChange={(e) => setEdicao((d) => ({ ...d, nome: e.target.value }))}
+                        placeholder="Nome"
+                        className={`${classeInput} py-1.5`}
+                      />
+                      <input
+                        value={edicao.sobrenome}
+                        onChange={(e) => setEdicao((d) => ({ ...d, sobrenome: e.target.value }))}
+                        placeholder="Sobrenome"
+                        className={`${classeInput} py-1.5`}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="email"
+                      value={edicao.email}
+                      onChange={(e) => setEdicao((d) => ({ ...d, email: e.target.value }))}
+                      className={`${classeInput} py-1.5`}
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={edicao.telefone}
+                      onChange={(e) => setEdicao((d) => ({ ...d, telefone: mascararTelefone(e.target.value) }))}
+                      className={`${classeInput} py-1.5`}
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={edicao.nivel}
+                      onChange={(e) => setEdicao((d) => ({ ...d, nivel: e.target.value as NivelUsuario }))}
+                      className={`${classeInput} py-1.5`}
+                    >
+                      <option value="user">Usuário</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => salvarEdicao(u.id)}
+                        className="text-[11px] font-semibold text-marca hover:underline"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelarEdicao}
+                        className="text-[11px] text-tinta-fraca hover:underline"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    {erroEdicao && <p className="mt-1 text-[10px] text-status-vencido">{erroEdicao}</p>}
+                  </td>
+                </tr>
+              ) : (
+                <tr key={u.id} className="border-t border-borda hover:bg-painel-2">
+                  <td className="px-4 py-2 font-medium text-tinta">{u.nome} {u.sobrenome}</td>
+                  <td className="px-4 py-2 text-tinta-fraca">{u.email}</td>
+                  <td className="px-4 py-2 text-tinta-fraca">{u.telefone}</td>
+                  <td className="px-4 py-2">
+                    <SeloNivel nivel={u.nivel} />
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => iniciarEdicao(u)}
+                        className="text-[11px] font-semibold text-tinta-fraca hover:text-tinta hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remover(u.id)}
+                        className="text-[11px] text-status-vencido hover:underline"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ),
+            )}
             {usuarios.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-tinta-fraca">
