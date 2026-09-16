@@ -118,7 +118,9 @@ interface DadosContrato {
   fornecedor: string
   documento: string
   gestor: string
+  gestorEmail: string
   responsavelJuridico: string
+  responsavelJuridicoEmail: string
   objeto: string
   dataInicio: string
   dataFim: string
@@ -143,7 +145,9 @@ const VAZIO: DadosContrato = {
   fornecedor: '',
   documento: '',
   gestor: '',
+  gestorEmail: '',
   responsavelJuridico: '',
+  responsavelJuridicoEmail: '',
   objeto: '',
   dataInicio: '',
   dataFim: '',
@@ -431,8 +435,26 @@ export default function NovoContrato() {
                 <CampoCartao label="Gestor do contrato" icone="pessoa">
                   <input required={passo === 0} placeholder="Nome do gestor" className={classeMini} {...campo('gestor')} />
                 </CampoCartao>
+                <CampoCartao label="E-mail do gestor" icone="documento">
+                  <input
+                    required={passo === 0}
+                    type="email"
+                    placeholder="gestor@princesadoscampos.com.br"
+                    className={classeMini}
+                    {...campo('gestorEmail')}
+                  />
+                </CampoCartao>
                 <CampoCartao label="Responsável jurídico" icone="pessoa">
                   <input required={passo === 0} placeholder="Nome" className={classeMini} {...campo('responsavelJuridico')} />
+                </CampoCartao>
+                <CampoCartao label="E-mail do responsável jurídico" icone="documento">
+                  <input
+                    required={passo === 0}
+                    type="email"
+                    placeholder="juridico@princesadoscampos.com.br"
+                    className={classeMini}
+                    {...campo('responsavelJuridicoEmail')}
+                  />
                 </CampoCartao>
               </div>
 
@@ -541,7 +563,9 @@ export default function NovoContrato() {
                       <LinhaResumo label="Fornecedor / Contratada" valor={dados.fornecedor} />
                       <LinhaResumo label="CNPJ / CPF" valor={dados.documento} />
                       <LinhaResumo label="Gestor do contrato" valor={dados.gestor} />
+                      <LinhaResumo label="E-mail do gestor" valor={dados.gestorEmail} />
                       <LinhaResumo label="Responsável jurídico" valor={dados.responsavelJuridico} />
+                      <LinhaResumo label="E-mail do responsável jurídico" valor={dados.responsavelJuridicoEmail} />
                       <div className="col-span-full">
                         <LinhaResumo label="Objeto do contrato" valor={dados.objeto} />
                       </div>
