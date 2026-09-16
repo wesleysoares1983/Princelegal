@@ -256,7 +256,3 @@ export function listarContratos(): Contrato[] {
 export function buscarContrato(idBuscado: string): Contrato | undefined {
   return CONTRATOS.find((c) => c.id === idBuscado)
 }
-
-export const AREAS_RESPONSAVEIS = ['Administrativo', 'TI', 'Operações', 'RH', 'Financeiro', 'Jurídico']
-export const EMPRESAS = ['Princesa dos Campos']
-export const FILIAIS = ['Matriz', 'Curitiba']

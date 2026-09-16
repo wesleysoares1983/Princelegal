@@ -1,15 +1,45 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { AREAS_RESPONSAVEIS, EMPRESAS, FILIAIS } from '@/lib/contratos'
+import { useEffect, useState } from 'react'
+import { lerOpcoes } from '@/lib/config/opcoesCadastro'
 import { formatarData, formatarMoeda } from '@/lib/status'
-import type { Categoria, IndiceReajuste } from '@/lib/tipos'
+import type { IndiceReajuste } from '@/lib/tipos'
 
-const CATEGORIAS: Categoria[] = [
-  'Aluguel', 'Água', 'Energia', 'Condomínio', 'Telecom', 'Licença', 'Seguro', 'Prestação de Serviço', 'Jurídico', 'Outros',
-]
 const INDICES: IndiceReajuste[] = ['IPCA', 'IGP-M', 'INPC', 'Fixo', 'Outro']
+
+/**
+ * As opcoes de Categoria, Empresa, Filial, Centro de Custo e Area Responsavel
+ * vem de Configuracoes (lib/config/opcoesCadastro) -- nao fixas aqui, para
+ * quem administra o sistema poder ajustar sem mexer em codigo. Recarrega
+ * quando Configuracoes muda (evento `cj:config`), ate se as duas telas
+ * estiverem abertas ao mesmo tempo.
+ */
+function useOpcoesCadastro() {
+  const [opcoes, setOpcoes] = useState({
+    categoria: [] as string[],
+    empresa: [] as string[],
+    filial: [] as string[],
+    centroCusto: [] as string[],
+    areaResponsavel: [] as string[],
+  })
+
+  useEffect(() => {
+    const carregar = () =>
+      setOpcoes({
+        categoria: lerOpcoes('categoria'),
+        empresa: lerOpcoes('empresa'),
+        filial: lerOpcoes('filial'),
+        centroCusto: lerOpcoes('centro-custo'),
+        areaResponsavel: lerOpcoes('area-responsavel'),
+      })
+    carregar()
+    window.addEventListener('cj:config', carregar)
+    return () => window.removeEventListener('cj:config', carregar)
+  }, [])
+
+  return opcoes
+}
 
 const PASSOS = [
   { titulo: 'Identificação', descricao: 'Contrato, fornecedor e responsáveis' },
@@ -192,6 +222,7 @@ function CampoArquivo({
 }
 
 export default function NovoContrato() {
+  const opcoes = useOpcoesCadastro()
   const [passo, setPasso] = useState(0)
   const [enviado, setEnviado] = useState(false)
   const [dados, setDados] = useState<DadosContrato>(VAZIO)
@@ -354,25 +385,25 @@ export default function NovoContrato() {
                 <CampoCartao label="Categoria" icone="tag">
                   <SelectMini required={passo === 0} {...campo('categoria')}>
                     <option value="" disabled>Selecione</option>
-                    {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {opcoes.categoria.map((c) => <option key={c} value={c}>{c}</option>)}
                   </SelectMini>
                 </CampoCartao>
                 <CampoCartao label="Empresa" icone="predio">
                   <SelectMini required={passo === 0} {...campo('empresa')}>
                     <option value="" disabled>Selecione</option>
-                    {EMPRESAS.map((e) => <option key={e} value={e}>{e}</option>)}
+                    {opcoes.empresa.map((e) => <option key={e} value={e}>{e}</option>)}
                   </SelectMini>
                 </CampoCartao>
                 <CampoCartao label="Filial" icone="predio">
                   <SelectMini required={passo === 0} {...campo('filial')}>
                     <option value="" disabled>Selecione</option>
-                    {FILIAIS.map((f) => <option key={f} value={f}>{f}</option>)}
+                    {opcoes.filial.map((f) => <option key={f} value={f}>{f}</option>)}
                   </SelectMini>
                 </CampoCartao>
                 <CampoCartao label="Área responsável" icone="predio">
                   <SelectMini required={passo === 0} {...campo('areaResponsavel')}>
                     <option value="" disabled>Selecione</option>
-                    {AREAS_RESPONSAVEIS.map((a) => <option key={a} value={a}>{a}</option>)}
+                    {opcoes.areaResponsavel.map((a) => <option key={a} value={a}>{a}</option>)}
                   </SelectMini>
                 </CampoCartao>
               </div>
@@ -427,7 +458,10 @@ export default function NovoContrato() {
                   <input required={passo === 1} placeholder="Boleto…" className={classeMini} {...campo('formaPagamento')} />
                 </CampoCartao>
                 <CampoCartao label="Centro de custo" icone="pasta">
-                  <input required={passo === 1} placeholder="CC-0000" className={classeMini} {...campo('centroCusto')} />
+                  <SelectMini required={passo === 1} {...campo('centroCusto')}>
+                    <option value="" disabled>Selecione</option>
+                    {opcoes.centroCusto.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </SelectMini>
                 </CampoCartao>
                 <CampoCartao label="Índice de reajuste" icone="indice">
                   <SelectMini required={passo === 1} {...campo('indiceReajuste')}>
