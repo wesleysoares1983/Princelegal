@@ -2,19 +2,39 @@
 
 import { useState } from 'react'
 
+type NivelUsuario = 'admin' | 'user'
+
 interface Usuario {
   id: string
   nome: string
   sobrenome: string
   email: string
   telefone: string
+  nivel: NivelUsuario
 }
 
 const USUARIOS_INICIAIS: Usuario[] = [
-  { id: 'u1', nome: 'Ana', sobrenome: 'Ribeiro', email: 'ana.ribeiro@princesadoscampos.com.br', telefone: '(42) 99101-2233' },
-  { id: 'u2', nome: 'João', sobrenome: 'Silva', email: 'joao.silva@princesadoscampos.com.br', telefone: '(42) 99202-3344' },
-  { id: 'u3', nome: 'Maria', sobrenome: 'Fernandes', email: 'maria.fernandes@princesadoscampos.com.br', telefone: '(42) 99303-4455' },
+  { id: 'u1', nome: 'Ana', sobrenome: 'Ribeiro', email: 'ana.ribeiro@princesadoscampos.com.br', telefone: '(42) 99101-2233', nivel: 'admin' },
+  { id: 'u2', nome: 'João', sobrenome: 'Silva', email: 'joao.silva@princesadoscampos.com.br', telefone: '(42) 99202-3344', nivel: 'user' },
+  { id: 'u3', nome: 'Maria', sobrenome: 'Fernandes', email: 'maria.fernandes@princesadoscampos.com.br', telefone: '(42) 99303-4455', nivel: 'user' },
 ]
+
+const ROTULO_NIVEL: Record<NivelUsuario, string> = { admin: 'Admin', user: 'Usuário' }
+
+/** Selo do nível: admin em destaque (acesso total), usuário em tom neutro. */
+function SeloNivel({ nivel }: { nivel: NivelUsuario }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] ${
+        nivel === 'admin'
+          ? 'border-marca/40 bg-marca-fraca text-marca'
+          : 'border-borda bg-painel-2 text-tinta-fraca'
+      }`}
+    >
+      {ROTULO_NIVEL[nivel]}
+    </span>
+  )
+}
 
 const classeInput =
   'w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none'
@@ -42,6 +62,7 @@ export default function CadastroDeUsuarios() {
   const [sobrenome, setSobrenome] = useState('')
   const [email, setEmail] = useState('')
   const [telefone, setTelefone] = useState('')
+  const [nivel, setNivel] = useState<NivelUsuario>('user')
   const [erro, setErro] = useState('')
 
   function cadastrar(e: React.FormEvent) {
@@ -54,12 +75,13 @@ export default function CadastroDeUsuarios() {
     setErro('')
     setUsuarios((atual) => [
       ...atual,
-      { id: crypto.randomUUID(), nome: nome.trim(), sobrenome: sobrenome.trim(), email: email.trim(), telefone },
+      { id: crypto.randomUUID(), nome: nome.trim(), sobrenome: sobrenome.trim(), email: email.trim(), telefone, nivel },
     ])
     setNome('')
     setSobrenome('')
     setEmail('')
     setTelefone('')
+    setNivel('user')
   }
 
   function remover(id: string) {
@@ -104,6 +126,17 @@ export default function CadastroDeUsuarios() {
                 className={classeInput}
               />
             </Campo>
+            <Campo label="Nível de acesso">
+              <select
+                required
+                value={nivel}
+                onChange={(e) => setNivel(e.target.value as NivelUsuario)}
+                className={classeInput}
+              >
+                <option value="user">Usuário</option>
+                <option value="admin">Admin</option>
+              </select>
+            </Campo>
           </div>
 
           {erro && <p className="text-[12px] text-status-vencido">{erro}</p>}
@@ -128,6 +161,7 @@ export default function CadastroDeUsuarios() {
               <th className="px-4 py-2 font-medium">Nome</th>
               <th className="px-4 py-2 font-medium">E-mail</th>
               <th className="px-4 py-2 font-medium">Telefone</th>
+              <th className="px-4 py-2 font-medium">Nível</th>
               <th className="px-4 py-2 font-medium"></th>
             </tr>
           </thead>
@@ -137,6 +171,9 @@ export default function CadastroDeUsuarios() {
                 <td className="px-4 py-2 font-medium text-tinta">{u.nome} {u.sobrenome}</td>
                 <td className="px-4 py-2 text-tinta-fraca">{u.email}</td>
                 <td className="px-4 py-2 text-tinta-fraca">{u.telefone}</td>
+                <td className="px-4 py-2">
+                  <SeloNivel nivel={u.nivel} />
+                </td>
                 <td className="px-4 py-2 text-right">
                   <button
                     type="button"
@@ -150,7 +187,7 @@ export default function CadastroDeUsuarios() {
             ))}
             {usuarios.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-tinta-fraca">
+                <td colSpan={5} className="px-4 py-8 text-center text-tinta-fraca">
                   Nenhum usuário cadastrado.
                 </td>
               </tr>
