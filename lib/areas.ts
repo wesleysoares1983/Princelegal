@@ -5,6 +5,8 @@
 export interface Subitem {
   href: string
   nome: string
+  /** So os itens de nivel raiz do rodape (Configuracoes, Ajuda) usam icone proprio. */
+  icone?: string
   itens?: Subitem[]
 }
 

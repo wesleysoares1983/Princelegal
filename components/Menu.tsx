@@ -22,6 +22,22 @@ const ICONES: Record<string, string> = {
 const LARGA = 'w-60'
 const ESTREITA = 'w-[60px]'
 
+/** Itens do rodape do menu -- fora de `AREAS` porque ficam abaixo das ondas
+ *  decorativas, e nao entre "Início" e "Gestão". Configurações abre em dois
+ *  subitens, no mesmo padrao de expandir/recolher das areas de negocio. */
+const RODAPE: Subitem[] = [
+  {
+    href: '/configuracoes/usuarios',
+    nome: 'Configurações',
+    icone: 'engrenagem',
+    itens: [
+      { href: '/configuracoes/usuarios', nome: 'Cadastro de Usuários' },
+      { href: '/configuracoes/opcoes-cadastro', nome: 'Opções de cadastro' },
+    ],
+  },
+  { href: '/ajuda', nome: 'Ajuda', icone: 'ajuda' },
+]
+
 function Icone({ nome }: { nome: string }) {
   return (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
@@ -213,24 +229,52 @@ export function Menu() {
       )}
 
       <div className="border-t border-borda py-2">
-        {[
-          { href: '/configuracoes', nome: 'Configurações', icone: 'engrenagem' },
-          { href: '/ajuda', nome: 'Ajuda', icone: 'ajuda' },
-        ].map((it) => (
-          <div key={it.href} className="px-2 py-[2px]">
-            <Link
-              href={it.href}
-              title={encolhido ? it.nome : undefined}
-              aria-current={caminho === it.href ? 'page' : undefined}
-              className={`flex min-w-0 items-center gap-[10px] rounded-md px-2 py-[9px] text-[11px] transition-colors ${
-                caminho === it.href ? 'menu-ativo font-semibold text-marca' : 'text-tinta-fraca hover:bg-painel-2 hover:text-tinta'
-              } ${encolhido ? 'justify-center' : ''}`}
-            >
-              <Icone nome={it.icone} />
-              {!encolhido && <span className="truncate">{it.nome}</span>}
-            </Link>
-          </div>
-        ))}
+        {RODAPE.map((it) => {
+          const temFilhos = !!it.itens?.length
+          const atual = temFilhos ? caminho.startsWith('/configuracoes') : caminho === it.href
+          const aberto = abertas.includes(it.href)
+
+          return (
+            <div key={it.href} className="px-2 py-[2px]">
+              <div className="flex items-stretch gap-1">
+                <Link
+                  href={it.href}
+                  onClick={() => temFilhos && alternarSecao(it.href)}
+                  title={encolhido ? it.nome : undefined}
+                  aria-current={atual ? 'page' : undefined}
+                  className={`flex min-w-0 flex-1 items-center gap-[10px] rounded-md px-2 py-[9px] text-[11px] transition-colors ${
+                    atual ? 'menu-ativo font-semibold text-marca' : 'text-tinta-fraca hover:bg-painel-2 hover:text-tinta'
+                  } ${encolhido ? 'justify-center' : ''}`}
+                >
+                  <Icone nome={it.icone ?? 'lista'} />
+                  {!encolhido && <span className="truncate">{it.nome}</span>}
+                </Link>
+
+                {temFilhos && !encolhido && (
+                  <button
+                    type="button"
+                    onClick={() => alternarSecao(it.href)}
+                    aria-expanded={aberto}
+                    aria-label={`${aberto ? 'Recolher' : 'Expandir'} ${it.nome}`}
+                    className="flex w-7 shrink-0 items-center justify-center rounded-md text-tinta-fraca hover:bg-painel-2 hover:text-tinta"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.4" fill="none" className={`transition-transform ${aberto ? 'rotate-90' : ''}`}>
+                      <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {temFilhos && !encolhido && (aberto || atual) && (
+                <div className="ml-[17px] mt-[2px] flex flex-col border-l border-borda pl-2">
+                  {it.itens!.map((sub) => (
+                    <Ramo key={sub.href} item={sub} caminho={caminho} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
 
         <div className="px-2 py-[2px]">
           <button
