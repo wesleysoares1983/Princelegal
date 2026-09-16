@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { SeloStatus } from '@/components/SeloStatus'
 import { buscarContrato } from '@/lib/contratos'
 import { avaliarContrato, formatarData, formatarMoeda, proximoReajuste } from '@/lib/status'
+import type { RegistroHistorico } from '@/lib/tipos'
 
 const ABAS = [
   'Identificação',
@@ -37,15 +38,61 @@ export default function DetalheContrato() {
   // ainda, isto fica local a tela; ao ganhar API vira uma chamada de verdade.
   const [encerradoLocalEm, setEncerradoLocalEm] = useState<string | undefined>(undefined)
 
+  // Aditivo: mesma ideia do encerramento -- entra na aba Historico e, sendo o
+  // registro mais recente, passa a valer como a vigencia e o valor atuais do
+  // contrato (e por isso entram no calculo de status/vencimento tambem).
+  const [aditivosLocais, setAditivosLocais] = useState<RegistroHistorico[]>([])
+  const [aditivoAberto, setAditivoAberto] = useState(false)
+  const [aditivo, setAditivo] = useState({ dataInicio: '', dataFim: '', valorMensal: '', observacao: '' })
+  const [erroAditivo, setErroAditivo] = useState('')
+
   if (!contratoBase) notFound()
 
-  const contrato = { ...contratoBase, encerradoEm: contratoBase.encerradoEm ?? encerradoLocalEm }
+  const historico = [...contratoBase.historico, ...aditivosLocais]
+  const ultimoRegistro = historico[historico.length - 1]
+  const contrato = {
+    ...contratoBase,
+    encerradoEm: contratoBase.encerradoEm ?? encerradoLocalEm,
+    dataFim: ultimoRegistro?.dataFim ?? contratoBase.dataFim,
+    valorMensal: ultimoRegistro?.valorMensal ?? contratoBase.valorMensal,
+    historico,
+  }
   const av = avaliarContrato(contrato)
   const reajuste = proximoReajuste(contrato.dataBaseReajuste)
 
   function encerrar() {
     if (!confirm('Encerrar este contrato? Ele continua no histórico e na auditoria — não é possível excluí-lo.')) return
     setEncerradoLocalEm(new Date().toISOString().slice(0, 10))
+  }
+
+  function abrirAditivo() {
+    setAditivo({ dataInicio: contrato.dataInicio, dataFim: contrato.dataFim, valorMensal: String(contrato.valorMensal), observacao: '' })
+    setErroAditivo('')
+    setAditivoAberto(true)
+  }
+
+  function registrarAditivo() {
+    if (!aditivo.dataInicio || !aditivo.dataFim || !aditivo.valorMensal) {
+      setErroAditivo('Preencha início, término e o novo valor mensal.')
+      return
+    }
+    const valor = Number(aditivo.valorMensal.replace(',', '.'))
+    if (Number.isNaN(valor) || valor < 0) {
+      setErroAditivo('Informe um valor mensal válido.')
+      return
+    }
+    setAditivosLocais((atual) => [
+      ...atual,
+      {
+        id: `aditivo-local-${atual.length + 1}`,
+        tipo: 'Aditivo',
+        dataInicio: aditivo.dataInicio,
+        dataFim: aditivo.dataFim,
+        valorMensal: valor,
+        observacao: aditivo.observacao.trim() || undefined,
+      },
+    ])
+    setAditivoAberto(false)
   }
 
   return (
@@ -254,6 +301,87 @@ export default function DetalheContrato() {
 
       {aba === 'Histórico' && (
         <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[12px] text-tinta-fraca">
+              Original, aditivos e renovações registrados neste contrato.
+            </p>
+            {!aditivoAberto && av.status !== 'encerrado' && (
+              <button
+                type="button"
+                onClick={abrirAditivo}
+                className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
+              >
+                + Novo aditivo
+              </button>
+            )}
+          </div>
+
+          {aditivoAberto && (
+            <div
+              className="grad-quadro space-y-3 rounded-xl border p-4"
+              style={{ '--cor-quadro': 'var(--roxo)' } as React.CSSProperties}
+            >
+              <p className="text-[13px] font-semibold text-tinta">Vincular aditivo de contrato</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <label className="block">
+                  <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Nova vigência — início</span>
+                  <input
+                    type="date"
+                    value={aditivo.dataInicio}
+                    onChange={(e) => setAditivo((a) => ({ ...a, dataInicio: e.target.value }))}
+                    className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta focus:border-marca/60 focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Nova vigência — término</span>
+                  <input
+                    type="date"
+                    value={aditivo.dataFim}
+                    onChange={(e) => setAditivo((a) => ({ ...a, dataFim: e.target.value }))}
+                    className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta focus:border-marca/60 focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Novo valor mensal (R$)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={aditivo.valorMensal}
+                    onChange={(e) => setAditivo((a) => ({ ...a, valorMensal: e.target.value }))}
+                    className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta focus:border-marca/60 focus:outline-none"
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Observação</span>
+                <input
+                  value={aditivo.observacao}
+                  onChange={(e) => setAditivo((a) => ({ ...a, observacao: e.target.value }))}
+                  placeholder="Ex.: Reajuste anual, prorrogação de prazo…"
+                  className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none"
+                />
+              </label>
+              {erroAditivo && <p className="text-[12px] text-status-vencido">{erroAditivo}</p>}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAditivoAberto(false)}
+                  className="rounded-md border border-borda px-3 py-2 text-[12px] text-tinta-fraca hover:text-tinta"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={registrarAditivo}
+                  className="rounded-md bg-marca px-4 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
+                >
+                  Vincular aditivo
+                </button>
+              </div>
+            </div>
+          )}
+
           {contrato.historico.map((h, i) => (
             <div
               key={h.id}

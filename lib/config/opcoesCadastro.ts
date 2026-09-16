@@ -18,6 +18,7 @@ export interface CampoCadastro {
 
 export const CAMPOS_CADASTRO: CampoCadastro[] = [
   { id: 'categoria', titulo: 'Categoria' },
+  { id: 'segmento', titulo: 'Segmento' },
   { id: 'empresa', titulo: 'Empresa' },
   { id: 'filial', titulo: 'Filial' },
   { id: 'centro-custo', titulo: 'Centro de Custo' },
@@ -38,7 +39,8 @@ const PADRAO: Record<string, string[]> = {
     'Jurídico',
     'Outros',
   ],
-  empresa: ['Princesa dos Campos'],
+  segmento: ['Passagens e Encomendas', 'Prinex'],
+  empresa: ['Princesa dos Campos', 'Paraná'],
   filial: ['Matriz', 'Curitiba'],
   'centro-custo': ['CC-1002', 'CC-2001', 'CC-3005'],
   'area-responsavel': ['Administrativo', 'TI', 'Operações', 'RH', 'Financeiro', 'Jurídico'],

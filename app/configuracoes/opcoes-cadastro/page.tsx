@@ -8,6 +8,7 @@ const classeInput =
 
 const ICONE_CAMPO: Record<string, string> = {
   categoria: 'M20.6 12.6L12 21.2 2.8 12 11.4 3.4a2 2 0 011.4-.6H19a2 2 0 012 2v5.2a2 2 0 01-.6 1.4zM16.5 7.5h.01',
+  segmento: 'M3 8l9-4 9 4-9 4zM3 8v8l9 4 9-4V8M12 12v8',
   empresa: 'M4 21V4a1 1 0 011-1h9a1 1 0 011 1v17M4 21h16M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1M19 21V11l-4-2',
   filial: 'M4 21V4a1 1 0 011-1h9a1 1 0 011 1v17M4 21h16M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1M19 21V11l-4-2',
   'centro-custo': 'M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z',
@@ -90,14 +91,14 @@ export default function OpcoesDeCadastro() {
       <div>
         <h1 className="text-lg font-semibold text-tinta">Configurações</h1>
         <p className="text-[13px] text-tinta-fraca">
-          Opções de Categoria, Empresa, Filial, Centro de Custo e Área Responsável usadas no cadastro de contratos.
+          Opções de Categoria, Segmento, Empresa, Filial, Centro de Custo e Área Responsável usadas no cadastro de contratos.
         </p>
       </div>
 
       <section className="grad-quadro rounded-xl border p-5" style={{ '--cor-quadro': 'var(--roxo)' } as React.CSSProperties}>
         <h2 className="text-[13px] font-semibold text-tinta">Opções de cadastro</h2>
         <p className="mb-4 text-[12px] text-tinta-fraca">
-          Categoria, Empresa, Filial, Centro de Custo e Área Responsável que aparecem no formulário de
+          Categoria, Segmento, Empresa, Filial, Centro de Custo e Área Responsável que aparecem no formulário de
           Novo Contrato.
         </p>
 

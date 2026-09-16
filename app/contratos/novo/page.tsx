@@ -9,7 +9,7 @@ import type { IndiceReajuste } from '@/lib/tipos'
 const INDICES: IndiceReajuste[] = ['IPCA', 'IGP-M', 'INPC', 'Fixo', 'Outro']
 
 /**
- * As opcoes de Categoria, Empresa, Filial, Centro de Custo e Area Responsavel
+ * As opcoes de Categoria, Segmento, Empresa, Filial, Centro de Custo e Area Responsavel
  * vem de Configuracoes (lib/config/opcoesCadastro) -- nao fixas aqui, para
  * quem administra o sistema poder ajustar sem mexer em codigo. Recarrega
  * quando Configuracoes muda (evento `cj:config`), ate se as duas telas
@@ -18,6 +18,7 @@ const INDICES: IndiceReajuste[] = ['IPCA', 'IGP-M', 'INPC', 'Fixo', 'Outro']
 function useOpcoesCadastro() {
   const [opcoes, setOpcoes] = useState({
     categoria: [] as string[],
+    segmento: [] as string[],
     empresa: [] as string[],
     filial: [] as string[],
     centroCusto: [] as string[],
@@ -28,6 +29,7 @@ function useOpcoesCadastro() {
     const carregar = () =>
       setOpcoes({
         categoria: lerOpcoes('categoria'),
+        segmento: lerOpcoes('segmento'),
         empresa: lerOpcoes('empresa'),
         filial: lerOpcoes('filial'),
         centroCusto: lerOpcoes('centro-custo'),
@@ -109,6 +111,7 @@ function SelectMini(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 interface DadosContrato {
   nome: string
   categoria: string
+  segmento: string
   empresa: string
   filial: string
   areaResponsavel: string
@@ -126,12 +129,14 @@ interface DadosContrato {
   centroCusto: string
   indiceReajuste: string
   dataBaseReajuste: string
+  multaRescisao: string
   observacoes: string
 }
 
 const VAZIO: DadosContrato = {
   nome: '',
   categoria: '',
+  segmento: '',
   empresa: '',
   filial: '',
   areaResponsavel: '',
@@ -149,6 +154,7 @@ const VAZIO: DadosContrato = {
   centroCusto: '',
   indiceReajuste: '',
   dataBaseReajuste: '',
+  multaRescisao: '',
   observacoes: '',
 }
 
@@ -284,6 +290,7 @@ export default function NovoContrato() {
   }
 
   const valorMensalNum = Number(dados.valorMensal.replace(',', '.'))
+  const multaRescisaoNum = Number(dados.multaRescisao.replace(',', '.'))
 
   return (
     <div className="flex min-h-full items-start justify-center p-6">
@@ -388,6 +395,12 @@ export default function NovoContrato() {
                     {opcoes.categoria.map((c) => <option key={c} value={c}>{c}</option>)}
                   </SelectMini>
                 </CampoCartao>
+                <CampoCartao label="Segmento" icone="pasta">
+                  <SelectMini required={passo === 0} {...campo('segmento')}>
+                    <option value="" disabled>Selecione</option>
+                    {opcoes.segmento.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </SelectMini>
+                </CampoCartao>
                 <CampoCartao label="Empresa" icone="predio">
                   <SelectMini required={passo === 0} {...campo('empresa')}>
                     <option value="" disabled>Selecione</option>
@@ -475,6 +488,16 @@ export default function NovoContrato() {
                 <CampoCartao label="Data-base de reajuste" icone="calendario">
                   <input required={passo === 1} type="date" className={classeMini} {...campo('dataBaseReajuste')} />
                 </CampoCartao>
+                <CampoCartao label="Multa de rescisão (R$)" icone="moeda">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    placeholder="Opcional"
+                    className={classeMini}
+                    {...campo('multaRescisao')}
+                  />
+                </CampoCartao>
               </div>
             </div>
 
@@ -511,6 +534,7 @@ export default function NovoContrato() {
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                       <LinhaResumo label="Nome do contrato" valor={dados.nome} />
                       <LinhaResumo label="Categoria" valor={dados.categoria} />
+                      <LinhaResumo label="Segmento" valor={dados.segmento} />
                       <LinhaResumo label="Empresa" valor={dados.empresa} />
                       <LinhaResumo label="Filial" valor={dados.filial} />
                       <LinhaResumo label="Área responsável" valor={dados.areaResponsavel} />
@@ -537,6 +561,10 @@ export default function NovoContrato() {
                       <LinhaResumo label="Centro de custo" valor={dados.centroCusto} />
                       <LinhaResumo label="Índice de reajuste" valor={dados.indiceReajuste} />
                       <LinhaResumo label="Data-base de reajuste" valor={dados.dataBaseReajuste ? formatarData(dados.dataBaseReajuste) : ''} />
+                      <LinhaResumo
+                        label="Multa de rescisão"
+                        valor={dados.multaRescisao && !Number.isNaN(multaRescisaoNum) ? formatarMoeda(multaRescisaoNum) : ''}
+                      />
                     </div>
                   </div>
 

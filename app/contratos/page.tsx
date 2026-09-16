@@ -96,7 +96,7 @@ function ConteudoListaContratos() {
         <input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por nome, código, fornecedor ou área…"
+          placeholder="Buscar por nome, código, razão social ou área…"
           className="ml-auto w-72 max-w-full rounded-md border border-borda bg-painel px-3 py-1.5 text-[12px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none"
         />
       </div>
