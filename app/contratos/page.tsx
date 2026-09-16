@@ -108,6 +108,7 @@ function ConteudoListaContratos() {
               <tr className="text-tinta-fraca">
                 <th className="px-4 py-2 font-medium">Código</th>
                 <th className="px-4 py-2 font-medium">Contrato</th>
+                <th className="px-4 py-2 font-medium">Razão Social</th>
                 <th className="px-4 py-2 font-medium">Categoria</th>
                 <th className="px-4 py-2 font-medium">Área</th>
                 <th className="px-4 py-2 font-medium">Vencimento</th>
@@ -123,8 +124,8 @@ function ConteudoListaContratos() {
                     <Link href={`/contratos/${c.id}`} className="font-medium text-tinta hover:text-marca">
                       {c.nome}
                     </Link>
-                    <p className="text-[11px] text-tinta-fraca">{c.fornecedorNome}</p>
                   </td>
+                  <td className="px-4 py-2 text-tinta-fraca">{c.fornecedorNome}</td>
                   <td className="px-4 py-2 text-tinta-fraca">{c.categoria}</td>
                   <td className="px-4 py-2 text-tinta-fraca">{c.areaResponsavel}</td>
                   <td className="px-4 py-2 text-tinta-fraca">{formatarData(c.dataFim)}</td>
@@ -136,7 +137,7 @@ function ConteudoListaContratos() {
               ))}
               {filtrados.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-tinta-fraca">
+                  <td colSpan={8} className="px-4 py-8 text-center text-tinta-fraca">
                     Nenhum contrato encontrado.
                   </td>
                 </tr>
