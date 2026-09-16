@@ -5,8 +5,21 @@ import { notFound, useParams } from 'next/navigation'
 import { useState } from 'react'
 import { SeloStatus } from '@/components/SeloStatus'
 import { buscarContrato } from '@/lib/contratos'
+import { usuarioAtual } from '@/lib/auth'
 import { avaliarContrato, formatarData, formatarMoeda, proximoReajuste } from '@/lib/status'
-import type { RegistroHistorico } from '@/lib/tipos'
+import type { Documento, RegistroHistorico } from '@/lib/tipos'
+
+const EXTENSOES_ACEITAS = '.pdf,.doc,.docx'
+const TIPOS_ACEITOS = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]
+
+function formatarTamanho(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 const ABAS = [
   'Identificação',
@@ -42,13 +55,16 @@ export default function DetalheContrato() {
   // registro mais recente, passa a valer como a vigencia e o valor atuais do
   // contrato (e por isso entram no calculo de status/vencimento tambem).
   const [aditivosLocais, setAditivosLocais] = useState<RegistroHistorico[]>([])
+  const [documentosLocais, setDocumentosLocais] = useState<Documento[]>([])
   const [aditivoAberto, setAditivoAberto] = useState(false)
   const [aditivo, setAditivo] = useState({ dataInicio: '', dataFim: '', valorMensal: '', observacao: '' })
+  const [arquivoAditivo, setArquivoAditivo] = useState<File | null>(null)
   const [erroAditivo, setErroAditivo] = useState('')
 
   if (!contratoBase) notFound()
 
   const historico = [...contratoBase.historico, ...aditivosLocais]
+  const documentos = [...contratoBase.documentos, ...documentosLocais]
   const ultimoRegistro = historico[historico.length - 1]
   const contrato = {
     ...contratoBase,
@@ -56,6 +72,7 @@ export default function DetalheContrato() {
     dataFim: ultimoRegistro?.dataFim ?? contratoBase.dataFim,
     valorMensal: ultimoRegistro?.valorMensal ?? contratoBase.valorMensal,
     historico,
+    documentos,
   }
   const av = avaliarContrato(contrato)
   const reajuste = proximoReajuste(contrato.dataBaseReajuste)
@@ -67,8 +84,19 @@ export default function DetalheContrato() {
 
   function abrirAditivo() {
     setAditivo({ dataInicio: contrato.dataInicio, dataFim: contrato.dataFim, valorMensal: String(contrato.valorMensal), observacao: '' })
+    setArquivoAditivo(null)
     setErroAditivo('')
     setAditivoAberto(true)
+  }
+
+  function selecionarArquivoAditivo(escolhido: File | null) {
+    if (!escolhido) return
+    if (!TIPOS_ACEITOS.includes(escolhido.type) && !/\.(pdf|docx?)$/i.test(escolhido.name)) {
+      setErroAditivo('Formato não aceito. Envie um PDF ou um Word (.doc/.docx).')
+      return
+    }
+    setErroAditivo('')
+    setArquivoAditivo(escolhido)
   }
 
   function registrarAditivo() {
@@ -81,10 +109,11 @@ export default function DetalheContrato() {
       setErroAditivo('Informe um valor mensal válido.')
       return
     }
+    const numero = aditivosLocais.length + 1
     setAditivosLocais((atual) => [
       ...atual,
       {
-        id: `aditivo-local-${atual.length + 1}`,
+        id: `aditivo-local-${numero}`,
         tipo: 'Aditivo',
         dataInicio: aditivo.dataInicio,
         dataFim: aditivo.dataFim,
@@ -92,7 +121,24 @@ export default function DetalheContrato() {
         observacao: aditivo.observacao.trim() || undefined,
       },
     ])
+    // O arquivo do aditivo tambem entra na aba Documentos, no mesmo lugar em
+    // que o contrato ficaria se o upload fosse de verdade -- sem isto, quem
+    // assina o aditivo so acharia o PDF procurando no Historico.
+    if (arquivoAditivo) {
+      setDocumentosLocais((atual) => [
+        ...atual,
+        {
+          id: `documento-local-${atual.length + 1}`,
+          nome: arquivoAditivo.name,
+          tipo: 'Aditivo',
+          versao: numero,
+          enviadoEm: new Date().toISOString().slice(0, 10),
+          enviadoPor: usuarioAtual() ?? 'Usuário',
+        },
+      ])
+    }
     setAditivoAberto(false)
+    setArquivoAditivo(null)
   }
 
   return (
@@ -362,6 +408,39 @@ export default function DetalheContrato() {
                   className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none"
                 />
               </label>
+
+              <div>
+                <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Aditivo assinado (PDF ou Word)</span>
+                {arquivoAditivo ? (
+                  <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-borda bg-painel-2 px-3 py-2">
+                    <span className="truncate text-[13px] font-semibold text-tinta">
+                      {arquivoAditivo.name} <span className="font-normal text-tinta-fraca">· {formatarTamanho(arquivoAditivo.size)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setArquivoAditivo(null)}
+                      className="shrink-0 text-[11px] text-status-vencido hover:underline"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : (
+                  <label className="mt-1 flex cursor-pointer items-center gap-2 rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta-fraca hover:text-tinta">
+                    <span className="rounded-md border border-borda bg-painel px-2.5 py-1 text-[11px] font-semibold text-tinta">Escolher arquivo</span>
+                    <span>Nenhum arquivo selecionado (opcional)</span>
+                    <input
+                      type="file"
+                      accept={EXTENSOES_ACEITAS}
+                      onChange={(e) => {
+                        selecionarArquivoAditivo(e.target.files?.[0] ?? null)
+                        e.target.value = ''
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
               {erroAditivo && <p className="text-[12px] text-status-vencido">{erroAditivo}</p>}
               <div className="flex justify-end gap-2">
                 <button
