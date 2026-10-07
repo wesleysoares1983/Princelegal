@@ -1,8 +1,23 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { entrar } from '@/lib/auth'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useState } from 'react'
+
+/** Mensagens para quem volta ao login vindo de um redirecionamento (`/login?erro=`). */
+const ERROS_URL: Record<string, string> = {
+  troca_senha: 'Não foi possível concluir a entrada após a troca de senha. Entre com a sua nova senha.',
+  indisponivel: 'Não foi possível validar o acesso agora. Tente novamente em alguns minutos.',
+  acesso_revogado: 'Seu acesso a este sistema foi removido ou desativado. Procure o administrador.',
+}
+
+export default function Login() {
+  // useSearchParams pede um limite de Suspense para a pagina poder ser pre-renderizada.
+  return (
+    <Suspense>
+      <TelaLogin />
+    </Suspense>
+  )
+}
 
 /**
  * Login sobre a imagem de referencia.
@@ -16,51 +31,52 @@ import { entrar } from '@/lib/auth'
  * As posicoes sao em porcentagem da imagem (1536x1024), medidas nela.
  * Funciona em qualquer largura porque a `<img>` mantem a proporcao e os
  * campos absolutos seguem o mesmo retangulo.
+ *
+ * Quem valida a senha sao os Apps Princesa (cadastro central), atraves de
+ * POST /api/auth/login; a senha nunca e guardada neste app.
  */
-export default function Login() {
-  const router = useRouter()
+function TelaLogin() {
+  const params = useSearchParams()
   const [login, setLogin] = useState('')
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [lembrar, setLembrar] = useState(false)
-  const [erro, setErro] = useState('')
+  const [erro, setErro] = useState(() => ERROS_URL[params.get('erro') ?? ''] ?? '')
   const [entrando, setEntrando] = useState(false)
 
-  const [recuperarAberto, setRecuperarAberto] = useState(false)
-  const [emailRecuperar, setEmailRecuperar] = useState('')
-  const [erroRecuperar, setErroRecuperar] = useState('')
-  const [recuperarEnviado, setRecuperarEnviado] = useState(false)
-
-  function abrirRecuperar() {
-    setEmailRecuperar('')
-    setErroRecuperar('')
-    setRecuperarEnviado(false)
-    setRecuperarAberto(true)
-  }
-
-  function enviarRecuperacao() {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRecuperar.trim())) {
-      setErroRecuperar('Informe o e-mail cadastrado para receber o link.')
-      return
-    }
-    setErroRecuperar('')
-    // Sem backend nesta versão: o envio real de e-mail entra quando o
-    // projeto ganhar uma API. A mensagem nao confirma se o e-mail existe --
-    // dizer "nao encontrado" daria a quem tenta adivinhar login uma forma de
-    // descobrir quais e-mails estao cadastrados.
-    setRecuperarEnviado(true)
-  }
-
-  function aoEntrar() {
-    if (!login.trim() || !senha.trim()) {
-      setErro('Informe login e senha para continuar.')
+  async function aoEntrar() {
+    if (entrando) return
+    if (!login.trim() || !senha) {
+      setErro('Informe matrícula ou e-mail e a senha para continuar.')
       return
     }
     setErro('')
     setEntrando(true)
-    // Sem backend nesta versão: qualquer login/senha preenchidos autenticam.
-    entrar(login.trim(), lembrar)
-    router.push('/')
+    try {
+      const resposta = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: login.trim(), senha, lembrar, destino: params.get('destino') ?? '/' }),
+      })
+      const dados = await resposta.json().catch(() => null)
+
+      if (dados?.ok) {
+        // Recarga completa: o layout le o cookie novo no servidor.
+        window.location.assign(dados.destino ?? '/')
+        return
+      }
+      if (dados?.acao === 'trocar_senha' && dados.url) {
+        // Senha temporaria: a troca acontece na pagina dos Apps Princesa, que
+        // devolve o navegador para /api/auth/retorno-senha ja com a sessao aberta.
+        window.location.assign(dados.url)
+        return
+      }
+      setErro(dados?.mensagem ?? 'Não foi possível entrar. Tente novamente.')
+      setEntrando(false)
+    } catch {
+      setErro('Sem conexão com o servidor. Verifique a rede e tente novamente.')
+      setEntrando(false)
+    }
   }
 
   const classeCampo = 'absolute bg-transparent text-[13px] text-[#14202e] placeholder:text-[#8894a5] focus:outline-none'
@@ -80,8 +96,8 @@ export default function Login() {
           value={login}
           onChange={(e) => setLogin(e.target.value)}
           autoComplete="username"
-          placeholder="Login"
-          aria-label="Login"
+          placeholder="Matrícula ou e-mail"
+          aria-label="Matrícula ou e-mail"
           onKeyDown={(e) => e.key === 'Enter' && aoEntrar()}
           className={classeCampo}
           style={{ left: '65.3%', top: '37.2%', width: '25.7%', height: '5.4%' }}
@@ -137,9 +153,9 @@ export default function Login() {
         </button>
 
         {/* "Esqueceu sua senha?": area clicavel sobre o texto. */}
-        <button
-          type="button"
-          onClick={abrirRecuperar}
+        <a
+          href="/api/auth/esqueci-senha"
+          aria-label="Esqueceu sua senha?"
           className="absolute"
           style={{ left: '81.4%', top: '53%', width: '12.5%', height: '2.3%' }}
         />
@@ -172,87 +188,14 @@ export default function Login() {
 
         {erro && (
           <p
+            role="alert"
             className="absolute rounded-md bg-white px-2 py-1 text-[12px] font-medium text-[#c4302b] shadow"
-            style={{ left: '61.3%', top: '50%' }}
+            style={{ left: '61.3%', top: '50%', maxWidth: '32.6%' }}
           >
             {erro}
           </p>
         )}
       </div>
-
-      {recuperarAberto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setRecuperarAberto(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-2xl border-2 border-[#2ecc55]/60 bg-white p-6 text-[#14202e] shadow-2xl"
-          >
-            {recuperarEnviado ? (
-              <>
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e3f5e8] text-[#0a7c2a]">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4h16v16H4z" />
-                    <path d="M4 6l8 7 8-7" />
-                  </svg>
-                </div>
-                <h2 className="mt-3 text-[16px] font-semibold">E-mail enviado</h2>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[#5c6b7f]">
-                  Se <span className="font-medium text-[#14202e]">{emailRecuperar}</span> for o e-mail de cadastro dessa
-                  conta, um link para redefinir a senha chega em instantes. Confira também a caixa de spam.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setRecuperarAberto(false)}
-                  className="mt-5 w-full rounded-lg bg-[#0a7c2a] py-2.5 text-[14px] font-semibold text-white hover:opacity-90"
-                >
-                  Fechar
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="flex items-start justify-between">
-                  <h2 className="text-[16px] font-semibold">Esqueceu sua senha?</h2>
-                  <button type="button" onClick={() => setRecuperarAberto(false)} aria-label="Fechar" className="text-[#8894a5] hover:text-[#14202e]">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 6l12 12M18 6L6 18" />
-                    </svg>
-                  </button>
-                </div>
-                <p className="mt-1.5 text-[13px] text-[#5c6b7f]">
-                  Informe o e-mail cadastrado. Vamos enviar um link para você criar uma nova senha.
-                </p>
-
-                <label className="mt-4 flex items-center gap-2 rounded-lg border border-[#dfe5ec] px-3 py-2.5 focus-within:border-[#0a7c2a]">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5c6b7f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="5" width="18" height="14" rx="2" />
-                    <path d="M3 7l9 6 9-6" />
-                  </svg>
-                  <input
-                    type="email"
-                    value={emailRecuperar}
-                    onChange={(e) => setEmailRecuperar(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && enviarRecuperacao()}
-                    placeholder="seu.email@princesadoscampos.com.br"
-                    autoFocus
-                    className="w-full text-[14px] text-[#14202e] placeholder:text-[#8894a5] focus:outline-none"
-                  />
-                </label>
-                {erroRecuperar && <p className="mt-2 text-[12px] text-[#c4302b]">{erroRecuperar}</p>}
-
-                <button
-                  type="button"
-                  onClick={enviarRecuperacao}
-                  className="mt-4 w-full rounded-lg bg-[#0a7c2a] py-2.5 text-[14px] font-semibold text-white hover:opacity-90"
-                >
-                  Enviar link de recuperação
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Casca } from '@/components/Casca'
+import { ProvedorUsuario } from '@/components/ProvedorUsuario'
+import { obterSessao } from '@/lib/server/sessao'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -7,7 +9,9 @@ export const metadata: Metadata = {
   description: 'Gestão de contratos jurídicos - Princesa dos Campos',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const usuario = await obterSessao()
+
   return (
     <html lang="pt-BR">
       <head>
@@ -19,7 +23,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <Casca>{children}</Casca>
+        <ProvedorUsuario usuario={usuario}>
+          <Casca>{children}</Casca>
+        </ProvedorUsuario>
       </body>
     </html>
   )

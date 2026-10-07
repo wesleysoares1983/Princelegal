@@ -1,10 +1,10 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { AREAS } from '@/lib/areas'
-import { sair, usuarioAtual } from '@/lib/auth'
+import { sair, useUsuario } from './ProvedorUsuario'
 
 export function BarraTopo() {
   const caminho = usePathname()
@@ -39,25 +39,38 @@ export function BarraTopo() {
   )
 }
 
+/**
+ * Quem esta logado, "Alterar senha" e "Sair".
+ *
+ * A senha mora no cadastro central (Apps Princesa): trocar e o mesmo fluxo de
+ * "esqueci minha senha" de la, aberto em outra aba para nao perder a tela atual.
+ */
 function BotaoSair() {
-  const router = useRouter()
-  const [email, setEmail] = useState<string | null>(null)
-
-  useEffect(() => {
-    setEmail(usuarioAtual())
-  }, [])
-
-  function aoSair() {
-    sair()
-    router.replace('/login')
-  }
+  const usuario = useUsuario()
 
   return (
     <div className="flex items-center gap-2 border-l border-borda pl-3">
-      {email && <span className="hidden max-w-[160px] truncate text-[11px] text-tinta-fraca sm:inline">{email}</span>}
+      {usuario && (
+        <span className="hidden max-w-[180px] truncate text-[11px] text-tinta-fraca sm:inline" title={`${usuario.email} · matrícula ${usuario.matricula}`}>
+          {usuario.nome}
+        </span>
+      )}
+      <a
+        href="/api/auth/esqueci-senha"
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Alterar senha"
+        aria-label="Alterar senha"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-tinta-fraca hover:bg-painel-2 hover:text-tinta"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="11" width="16" height="10" rx="2" />
+          <path d="M8 11V7a4 4 0 018 0v4" />
+        </svg>
+      </a>
       <button
         type="button"
-        onClick={aoSair}
+        onClick={sair}
         title="Sair"
         aria-label="Sair"
         className="flex h-7 w-7 items-center justify-center rounded-md text-tinta-fraca hover:bg-painel-2 hover:text-status-vencido"
