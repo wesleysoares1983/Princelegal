@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { notFound, useParams } from 'next/navigation'
 import { useState } from 'react'
 import { SeloStatus } from '@/components/SeloStatus'
+import { useUsuario } from '@/components/ProvedorUsuario'
 import { buscarContrato } from '@/lib/contratos'
-import { usuarioAtual } from '@/lib/auth'
 import { avaliarContrato, formatarData, formatarMoeda, proximoReajuste } from '@/lib/status'
 import type { Documento, RegistroHistorico } from '@/lib/tipos'
 
@@ -45,6 +45,7 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
 export default function DetalheContrato() {
   const { id } = useParams<{ id: string }>()
   const contratoBase = buscarContrato(id)
+  const usuario = useUsuario()
   const [aba, setAba] = useState<Aba>('Identificação')
   // Encerrar so muda o status calculado -- o registro do contrato continua
   // existindo e visivel, nunca some da lista nem do historico. Sem backend
@@ -133,7 +134,7 @@ export default function DetalheContrato() {
           tipo: 'Aditivo',
           versao: numero,
           enviadoEm: new Date().toISOString().slice(0, 10),
-          enviadoPor: usuarioAtual() ?? 'Usuário',
+          enviadoPor: usuario?.nome ?? 'Usuário',
         },
       ])
     }

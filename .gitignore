@@ -4,3 +4,5 @@ next-env.d.ts
 *.tsbuildinfo
 .env*.local
 Tela de login.png
+docs/
+.env

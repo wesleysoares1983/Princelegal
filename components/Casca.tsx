@@ -1,7 +1,6 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { AuthGuard } from './AuthGuard'
 import { BarraTopo } from './BarraTopo'
 import { Menu } from './Menu'
 
@@ -20,14 +19,12 @@ export function Casca({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthGuard>
-      <div className="flex h-screen">
-        <Menu />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <BarraTopo />
-          <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
-        </div>
+    <div className="flex h-screen">
+      <Menu />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <BarraTopo />
+        <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
       </div>
-    </AuthGuard>
+    </div>
   )
 }

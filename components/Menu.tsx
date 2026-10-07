@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { AREAS, type Subitem } from '@/lib/areas'
-import { sair } from '@/lib/auth'
 import { Marca } from './Marca'
+import { sair, useUsuario } from './ProvedorUsuario'
 
 const ICONES: Record<string, string> = {
   livro: 'M4 4h11a3 3 0 013 3v13H7a3 3 0 01-3-3zM7 20a3 3 0 01-3-3M8 8h7M8 12h7',
@@ -23,20 +23,22 @@ const LARGA = 'w-60'
 const ESTREITA = 'w-[60px]'
 
 /** Itens do rodape do menu -- fora de `AREAS` porque ficam abaixo das ondas
- *  decorativas, e nao entre "Início" e "Gestão". Configurações abre em dois
- *  subitens, no mesmo padrao de expandir/recolher das areas de negocio. */
-const RODAPE: Subitem[] = [
-  {
-    href: '/configuracoes/usuarios',
-    nome: 'Configurações',
-    icone: 'engrenagem',
-    itens: [
-      { href: '/configuracoes/usuarios', nome: 'Cadastro de Usuários' },
-      { href: '/configuracoes/opcoes-cadastro', nome: 'Opções de cadastro' },
-    ],
-  },
-  { href: '/ajuda', nome: 'Ajuda', icone: 'ajuda' },
-]
+ *  decorativas, e nao entre "Início" e "Gestão". Configurações abre em
+ *  subitens, no mesmo padrao de expandir/recolher das areas de negocio.
+ *
+ *  Configurações e so de administrador (o proxy tambem barra a rota).
+ *  Usuários e somente leitura: cadastro, acesso e cargo sao geridos no
+ *  cadastro central dos Apps Princesa. */
+const CONFIGURACOES: Subitem = {
+  href: '/configuracoes/usuarios',
+  nome: 'Configurações',
+  icone: 'engrenagem',
+  itens: [
+    { href: '/configuracoes/usuarios', nome: 'Usuários' },
+    { href: '/configuracoes/opcoes-cadastro', nome: 'Opções de cadastro' },
+  ],
+}
+const AJUDA: Subitem = { href: '/ajuda', nome: 'Ajuda', icone: 'ajuda' }
 
 function Icone({ nome }: { nome: string }) {
   return (
@@ -63,7 +65,8 @@ function Ramo({ item, caminho }: { item: Subitem; caminho: string }) {
 
 export function Menu() {
   const caminho = usePathname()
-  const router = useRouter()
+  const usuario = useUsuario()
+  const rodape = usuario?.nivel === 'admin' ? [CONFIGURACOES, AJUDA] : [AJUDA]
   const [encolhido, setEncolhido] = useState(false)
   const [abertas, setAbertas] = useState<string[]>([])
 
@@ -229,7 +232,7 @@ export function Menu() {
       )}
 
       <div className="border-t border-borda py-2">
-        {RODAPE.map((it) => {
+        {rodape.map((it) => {
           const temFilhos = !!it.itens?.length
           const atual = temFilhos ? caminho.startsWith('/configuracoes') : caminho === it.href
           const aberto = abertas.includes(it.href)
@@ -279,10 +282,7 @@ export function Menu() {
         <div className="px-2 py-[2px]">
           <button
             type="button"
-            onClick={() => {
-              sair()
-              router.replace('/login')
-            }}
+            onClick={sair}
             title={encolhido ? 'Sair' : undefined}
             className={`flex w-full min-w-0 items-center gap-[10px] rounded-md px-2 py-[9px] text-[11px] text-tinta-fraca transition-colors hover:bg-painel-2 hover:text-status-vencido ${
               encolhido ? 'justify-center' : ''
