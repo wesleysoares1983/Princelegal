@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { SeloStatus } from '@/components/SeloStatus'
 import { useUsuario } from '@/components/ProvedorUsuario'
 import { buscarContrato } from '@/lib/contratos'
-import { avaliarContrato, formatarData, formatarMoeda, proximoReajuste } from '@/lib/status'
+import { hojeSP } from '@/lib/shared/datas'
+import { avaliarContrato, formatarData, formatarMoeda, proximoReajuste } from '@/lib/shared/status'
 import type { Documento, RegistroHistorico } from '@/lib/tipos'
 
 const EXTENSOES_ACEITAS = '.pdf,.doc,.docx'
@@ -80,7 +81,7 @@ export default function DetalheContrato() {
 
   function encerrar() {
     if (!confirm('Encerrar este contrato? Ele continua no histórico e na auditoria — não é possível excluí-lo.')) return
-    setEncerradoLocalEm(new Date().toISOString().slice(0, 10))
+    setEncerradoLocalEm(hojeSP())
   }
 
   function abrirAditivo() {
@@ -133,7 +134,7 @@ export default function DetalheContrato() {
           nome: arquivoAditivo.name,
           tipo: 'Aditivo',
           versao: numero,
-          enviadoEm: new Date().toISOString().slice(0, 10),
+          enviadoEm: hojeSP(),
           enviadoPor: usuario?.nome ?? 'Usuário',
         },
       ])

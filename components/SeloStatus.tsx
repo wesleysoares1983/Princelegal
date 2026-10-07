@@ -1,4 +1,4 @@
-import { STATUS_INFO } from '@/lib/status'
+import { STATUS_INFO } from '@/lib/shared/status'
 import type { Status } from '@/lib/tipos'
 
 export function SeloStatus({ status, rotulo }: { status: Status; rotulo?: string }) {

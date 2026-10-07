@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { listarContratos } from '@/lib/contratos'
-import { formatarData } from '@/lib/status'
+import { formatarData } from '@/lib/shared/status'
 
 /**
  * Trilha de auditoria de todos os contratos, num lugar so.

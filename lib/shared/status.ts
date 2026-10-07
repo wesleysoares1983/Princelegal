@@ -1,11 +1,12 @@
-import type { Contrato, Status } from './tipos'
+import type { Contrato, Status } from '@/lib/tipos'
+import { diasAte, hojeSP, somarAnos } from './datas'
 
-/** Dias corridos entre hoje e uma data ISO. Negativo quando a data já passou. */
-export function diasAte(dataIso: string, hoje = new Date()): number {
-  const alvo = new Date(dataIso + 'T00:00:00')
-  const base = new Date(hoje.toISOString().slice(0, 10) + 'T00:00:00')
-  return Math.round((alvo.getTime() - base.getTime()) / 86_400_000)
-}
+/*
+ * "Hoje" e sempre a data de Brasilia (`hojeSP`), passada como texto
+ * `AAAA-MM-DD`. A versao anterior tirava o dia de `toISOString()` -- UTC --,
+ * o que adiantava o calendario em um dia entre 21h e meia-noite.
+ */
+export { diasAte }
 
 export const LIMIARES_PADRAO = [120, 90, 60, 30, 15, 7] as const
 
@@ -28,7 +29,7 @@ export interface Avaliacao {
  * deveria voltar a aparecer como "vigente" só porque a data final ainda não
  * chegou.
  */
-export function avaliarContrato(c: Contrato, hoje = new Date()): Avaliacao {
+export function avaliarContrato(c: Contrato, hoje: string = hojeSP()): Avaliacao {
   const diasVencimento = diasAte(c.dataFim, hoje)
   const diasDecisao = diasVencimento - c.prazoAvisoCancelamentoDias
   const decisaoUrgente = diasDecisao <= 30 && diasDecisao >= diasVencimento * -1 && diasVencimento > 0
@@ -74,15 +75,15 @@ export const STATUS_INFO: Record<Status, { rotulo: string; cor: string; corFraca
   renovado: { rotulo: 'Renovado', cor: 'status-renovado', corFraca: 'status-renovado-fraca', ponto: '🔵' },
 }
 
-/** Próximo reajuste: mesma data-base, ano seguinte ao mais recente já passado. */
-export function proximoReajuste(dataBaseIso: string, hoje = new Date()): string {
-  const base = new Date(dataBaseIso + 'T00:00:00')
-  const alvo = new Date(base)
-  alvo.setFullYear(hoje.getFullYear())
-  if (diasAte(alvo.toISOString().slice(0, 10), hoje) < 0) {
-    alvo.setFullYear(alvo.getFullYear() + 1)
-  }
-  return alvo.toISOString().slice(0, 10)
+/**
+ * Próximo reajuste: o aniversário da data-base no ano corrente, ou no
+ * seguinte se já passou. Data-base em 29/02 cai em 28/02 nos anos comuns.
+ */
+export function proximoReajuste(dataBaseIso: string, hoje: string = hojeSP()): string {
+  const anos = Number(hoje.slice(0, 4)) - Number(dataBaseIso.slice(0, 4))
+  const diaAncora = Number(dataBaseIso.slice(8, 10))
+  const nesteAno = somarAnos(dataBaseIso, anos, diaAncora)
+  return diasAte(nesteAno, hoje) < 0 ? somarAnos(dataBaseIso, anos + 1, diaAncora) : nesteAno
 }
 
 export function formatarData(iso: string): string {

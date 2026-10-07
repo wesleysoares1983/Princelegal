@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+
+    # Mesmo banco descartavel do docker-compose.dev.yml (PostgreSQL 14, como o servidor corporativo).
+    services:
+      db-teste:
+        image: postgres:14-alpine
+        env:
+          POSTGRES_DB: princelegal_teste
+          POSTGRES_USER: teste
+          POSTGRES_PASSWORD: teste
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U teste -d princelegal_teste"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Migracoes em dia com o esquema
+        run: npx drizzle-kit check
+
+      - name: Testes de unidade
+        run: npm test
+
+      - name: Testes de banco
+        run: npm run test:banco
+
+      - name: Build
+        run: npm run build

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense, useMemo, useState } from 'react'
 import { SeloStatus } from '@/components/SeloStatus'
 import { listarContratos } from '@/lib/contratos'
-import { avaliarContrato, formatarData, formatarMoeda } from '@/lib/status'
+import { avaliarContrato, formatarData, formatarMoeda } from '@/lib/shared/status'
 import type { Status } from '@/lib/tipos'
 
 type FiltroStatus = Status | 'todos' | 'ativos'

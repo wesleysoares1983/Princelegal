@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { SeloStatus } from '@/components/SeloStatus'
 import { listarContratos } from '@/lib/contratos'
-import { avaliarContrato, formatarData } from '@/lib/status'
+import { avaliarContrato, formatarData } from '@/lib/shared/status'
 
 /**
  * Fila de alertas: tudo que pede atencao hoje, do mais urgente para o menos.

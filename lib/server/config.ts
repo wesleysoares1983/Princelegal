@@ -1,16 +1,49 @@
+import { z } from 'zod'
+
 /**
- * Variaveis de ambiente do servidor, lidas sob demanda.
+ * Variaveis de ambiente do servidor, validadas com zod.
  *
- * Ler na hora (e nao no carregamento do modulo) deixa o `next build` rodar
- * sem o .env -- mas a primeira requisicao que precisar de uma variavel
- * ausente falha com uma mensagem que diz qual falta, em vez de seguir com
- * `undefined` e virar um erro confuso la na frente.
+ * Cada grupo e lido sob demanda (e guardado depois da primeira leitura): o
+ * `next build` roda sem .env, e o proxy so precisa do grupo de sessao. No
+ * boot do servidor, `validarAmbiente()` (instrumentation.ts) confere tudo de
+ * uma vez e derruba o processo com a lista do que falta -- melhor do que
+ * descobrir na primeira requisicao que usar a variavel.
+ *
+ * Sem `import 'server-only'` de proposito: este modulo tambem roda no proxy.
  */
 
-function exigir(nome: string): string {
-  const valor = process.env[nome]?.trim()
-  if (!valor) throw new Error(`Configuração ausente: defina ${nome} no .env`)
-  return valor
+const texto = (nome: string) => z.string({ error: `defina ${nome}` }).trim().min(1, `defina ${nome}`)
+
+const esquemaAppsPrincesa = z.object({
+  APPS_PRINCESA_URL: texto('APPS_PRINCESA_URL').pipe(z.url('APPS_PRINCESA_URL deve ser uma URL')),
+  APPS_INTERNAL_KEY: texto('APPS_INTERNAL_KEY'),
+  APP_ID: z.coerce.number({ error: 'APP_ID deve ser um número' }).int().positive('APP_ID deve ser um inteiro positivo'),
+})
+
+const esquemaSessao = z.object({
+  SESSION_SECRET: texto('SESSION_SECRET').pipe(z.string().min(32, 'SESSION_SECRET precisa de pelo menos 32 caracteres')),
+})
+
+const esquemaBanco = z.object({
+  POSTGRES_HOST: texto('POSTGRES_HOST'),
+  POSTGRES_PORT: z.coerce.number({ error: 'POSTGRES_PORT deve ser um número' }).int().positive().default(5432),
+  POSTGRES_DATABASE: texto('POSTGRES_DATABASE'),
+  POSTGRES_USERNAME: texto('POSTGRES_USERNAME'),
+  POSTGRES_PASSWORD: texto('POSTGRES_PASSWORD'),
+})
+
+function ler<T extends z.ZodType>(esquema: T): z.infer<T> {
+  const resultado = esquema.safeParse(process.env)
+  if (!resultado.success) {
+    const problemas = resultado.error.issues.map((i) => i.message).join('; ')
+    throw new Error(`Configuração inválida no .env: ${problemas}`)
+  }
+  return resultado.data
+}
+
+function memorizar<T>(fn: () => T): () => T {
+  let valor: { v: T } | null = null
+  return () => (valor ??= { v: fn() }).v
 }
 
 export interface ConfigAppsPrincesa {
@@ -20,23 +53,38 @@ export interface ConfigAppsPrincesa {
   appId: number
 }
 
-export function configAppsPrincesa(): ConfigAppsPrincesa {
-  const appId = Number(exigir('APP_ID'))
-  if (!Number.isInteger(appId) || appId <= 0) {
-    throw new Error('Configuração inválida: APP_ID deve ser um número inteiro positivo')
-  }
-  return {
-    url: exigir('APPS_PRINCESA_URL').replace(/\/+$/, ''),
-    chaveInterna: exigir('APPS_INTERNAL_KEY'),
-    appId,
-  }
+export const configAppsPrincesa = memorizar((): ConfigAppsPrincesa => {
+  const e = ler(esquemaAppsPrincesa)
+  return { url: e.APPS_PRINCESA_URL.replace(/\/+$/, ''), chaveInterna: e.APPS_INTERNAL_KEY, appId: e.APP_ID }
+})
+
+/** Segredo que assina o cookie de sessao. */
+export const segredoSessao = memorizar(() => ler(esquemaSessao).SESSION_SECRET)
+
+export interface ConfigBanco {
+  host: string
+  port: number
+  database: string
+  username: string
+  password: string
 }
 
-/** Segredo que assina o cookie de sessao. Curto demais = assinatura facil de quebrar. */
-export function segredoSessao(): string {
-  const segredo = exigir('SESSION_SECRET')
-  if (segredo.length < 32) {
-    throw new Error('Configuração inválida: SESSION_SECRET precisa de pelo menos 32 caracteres')
+export const configBanco = memorizar((): ConfigBanco => {
+  const e = ler(esquemaBanco)
+  return {
+    host: e.POSTGRES_HOST,
+    port: e.POSTGRES_PORT,
+    database: e.POSTGRES_DATABASE,
+    username: e.POSTGRES_USERNAME,
+    password: e.POSTGRES_PASSWORD,
   }
-  return segredo
+})
+
+/** Confere todas as variaveis de uma vez; lanca com a lista completa do que esta errado. */
+export function validarAmbiente() {
+  const resultado = esquemaAppsPrincesa.and(esquemaSessao).and(esquemaBanco).safeParse(process.env)
+  if (!resultado.success) {
+    const problemas = resultado.error.issues.map((i) => `  - ${i.message}`).join('\n')
+    throw new Error(`Configuração inválida no .env:\n${problemas}`)
+  }
 }

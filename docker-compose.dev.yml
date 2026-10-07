@@ -1,0 +1,26 @@
+# Banco descartavel para os testes (npm run test:banco).
+#
+# Mesma versao do servidor corporativo (PostgreSQL 14). Dados em tmpfs: some ao
+# parar o container -- e de proposito, cada execucao dos testes recria tudo.
+# O app em si usa o banco do .env (servidor corporativo), nunca este.
+#
+# Subir:  npm run db:teste:subir     (usa o Docker do WSL)
+# Parar:  npm run db:teste:parar
+services:
+  db-teste:
+    image: postgres:14-alpine
+    container_name: princelegal-db-teste
+    environment:
+      POSTGRES_DB: princelegal_teste
+      POSTGRES_USER: teste
+      POSTGRES_PASSWORD: teste
+      TZ: UTC
+    ports:
+      - "54329:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teste -d princelegal_teste"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Casca } from '@/components/Casca'
+import { ProvedorConsultas } from '@/components/ProvedorConsultas'
 import { ProvedorUsuario } from '@/components/ProvedorUsuario'
 import { obterSessao } from '@/lib/server/sessao'
 import './globals.css'
@@ -24,7 +25,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <ProvedorUsuario usuario={usuario}>
-          <Casca>{children}</Casca>
+          <ProvedorConsultas>
+            <Casca>{children}</Casca>
+          </ProvedorConsultas>
         </ProvedorUsuario>
       </body>
     </html>

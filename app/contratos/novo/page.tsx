@@ -1,46 +1,35 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { lerOpcoes } from '@/lib/config/opcoesCadastro'
-import { formatarData, formatarMoeda } from '@/lib/status'
+import { useState } from 'react'
+import { useOpcoes } from '@/lib/api/opcoes'
+import { formatarData, formatarMoeda } from '@/lib/shared/status'
 import type { IndiceReajuste } from '@/lib/tipos'
 
 const INDICES: IndiceReajuste[] = ['IPCA', 'IGP-M', 'INPC', 'Fixo', 'Outro']
 
 /**
- * As opcoes de Categoria, Segmento, Empresa, Filial, Centro de Custo e Area Responsavel
- * vem de Configuracoes (lib/config/opcoesCadastro) -- nao fixas aqui, para
- * quem administra o sistema poder ajustar sem mexer em codigo. Recarrega
- * quando Configuracoes muda (evento `cj:config`), ate se as duas telas
- * estiverem abertas ao mesmo tempo.
+ * As opcoes de Categoria, Segmento, Empresa, Filial, Centro de Custo e Area
+ * Responsavel vem da API (Configuracoes › Opcoes de cadastro, so as ativas) --
+ * nao fixas aqui, para quem administra o sistema poder ajustar sem mexer em
+ * codigo. Uma mudanca feita em Configuracoes aparece aqui sozinha (o cache e
+ * invalidado), ate com as duas telas abertas.
+ *
+ * Por enquanto o formulario guarda o texto da opcao; quando o cadastro for
+ * salvo de verdade (M2), passa a guardar o id.
  */
 function useOpcoesCadastro() {
-  const [opcoes, setOpcoes] = useState({
-    categoria: [] as string[],
-    segmento: [] as string[],
-    empresa: [] as string[],
-    filial: [] as string[],
-    centroCusto: [] as string[],
-    areaResponsavel: [] as string[],
-  })
-
-  useEffect(() => {
-    const carregar = () =>
-      setOpcoes({
-        categoria: lerOpcoes('categoria'),
-        segmento: lerOpcoes('segmento'),
-        empresa: lerOpcoes('empresa'),
-        filial: lerOpcoes('filial'),
-        centroCusto: lerOpcoes('centro-custo'),
-        areaResponsavel: lerOpcoes('area-responsavel'),
-      })
-    carregar()
-    window.addEventListener('cj:config', carregar)
-    return () => window.removeEventListener('cj:config', carregar)
-  }, [])
-
-  return opcoes
+  const { data, isError } = useOpcoes()
+  const valores = (campo: keyof NonNullable<typeof data>) => data?.[campo]?.map((o) => o.valor) ?? []
+  return {
+    categoria: valores('categoria'),
+    segmento: valores('segmento'),
+    empresa: valores('empresa'),
+    filial: valores('filial'),
+    centroCusto: valores('centro-custo'),
+    areaResponsavel: valores('area-responsavel'),
+    erro: isError,
+  }
 }
 
 const PASSOS = [
@@ -377,6 +366,11 @@ export default function NovoContrato() {
               <p className="mt-0.5 text-[12px] text-tinta-fraca">
                 Preencha os dados abaixo. Os campos marcados são obrigatórios em cada etapa.
               </p>
+              {opcoes.erro && (
+                <p role="alert" className="mt-1 text-[12px] text-status-vencido">
+                  Não foi possível carregar as opções de Categoria, Empresa, Filial etc. Recarregue a página.
+                </p>
+              )}
             </div>
             <Link href="/contratos" aria-label="Fechar" className="text-tinta-fraca hover:text-tinta">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

@@ -22,13 +22,31 @@ import { revalidarSessao } from '@/lib/server/usuariosApp'
  * sessao na hora, mantendo o prazo original dela.
  */
 
-/** Rotas que precisam funcionar sem sessao. */
-const PUBLICAS = new Set(['/api/auth/login', '/api/auth/retorno-senha', '/api/auth/esqueci-senha', '/api/auth/sair'])
+/** Rotas que precisam funcionar sem sessao. /api/health: healthcheck do Docker. */
+const PUBLICAS = new Set([
+  '/api/health',
+  '/api/auth/login',
+  '/api/auth/retorno-senha',
+  '/api/auth/esqueci-senha',
+  '/api/auth/sair',
+])
+
+/**
+ * 401 da API. /api/v1 usa o envelope padrao (`{ erro: { codigo, mensagem } }`,
+ * igual ao das rotas); o resto de /api mantem o formato das rotas de login.
+ */
+function naoAutenticadoApi(pathname: string) {
+  const mensagem = 'Sessão expirada. Entre novamente.'
+  const corpo = pathname.startsWith('/api/v1/')
+    ? { erro: { codigo: 'NAO_AUTENTICADO', mensagem } }
+    : { ok: false, erro: 'nao_autenticado', mensagem }
+  return NextResponse.json(corpo, { status: 401, headers: { 'Cache-Control': 'private, no-store' } })
+}
 
 function semSessao(req: NextRequest, motivo?: 'acesso_revogado') {
   const { pathname, search } = req.nextUrl
   const res = pathname.startsWith('/api/')
-    ? NextResponse.json({ ok: false, erro: 'nao_autenticado', mensagem: 'Sessão expirada. Entre novamente.' }, { status: 401 })
+    ? naoAutenticadoApi(pathname)
     : (() => {
         const login = new URL('/login', req.url)
         if (motivo) login.searchParams.set('erro', motivo)

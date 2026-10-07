@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791398630010,
+      "tag": "0000_extensoes",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791398641768,
+      "tag": "0001_opcoes_e_auditoria",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791398649510,
+      "tag": "0002_auditoria_imutavel_e_opcoes_iniciais",
+      "breakpoints": true
+    }
+  ]
+}

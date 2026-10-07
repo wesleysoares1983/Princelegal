@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { SeloStatus } from '@/components/SeloStatus'
 import { listarContratos } from '@/lib/contratos'
-import { avaliarContrato, formatarData, formatarMoeda } from '@/lib/status'
+import { avaliarContrato, formatarData, formatarMoeda } from '@/lib/shared/status'
 
 export default function Inicio() {
   const contratos = listarContratos()
