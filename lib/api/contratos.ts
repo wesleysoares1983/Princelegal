@@ -68,7 +68,11 @@ export function usePainel() {
 export function useAlertas() {
   return useQuery({
     queryKey: ['alertas'],
-    queryFn: () => chamarApi<{ itens: (ContratoResumo & { ultimoAlertaEnviado: unknown })[] }>('GET', '/alertas'),
+    queryFn: () =>
+      chamarApi<{ itens: (ContratoResumo & { ultimoAlertaEnviado: { tipo: 'vencimento' | 'prazo_aviso' | 'vencido'; limiarDias: number; enviadoEm: string } | null })[] }>(
+        'GET',
+        '/alertas',
+      ),
   })
 }
 
@@ -152,3 +156,42 @@ export const useRenovarContrato = (id: string) =>
   useMutacaoContrato(({ dados, arquivo }: { dados: Record<string, unknown>; arquivo?: File | null }) =>
     chamarApi<ContratoDetalhe>('POST', `/contratos/${id}/renovar`, corpoComArquivo(dados, arquivo)),
   )
+
+export interface AlertaEnviadoTela {
+  id: string
+  tipo: 'vencimento' | 'prazo_aviso' | 'vencido'
+  limiarDias: number
+  dataReferencia: string
+  situacao: 'enviado' | 'ignorado' | 'falhou'
+  destinatarios: string[]
+  erro: string | null
+  enviadoEm: string
+}
+
+export function useAlertasDoContrato(id: string, ativo: boolean) {
+  return useQuery({
+    queryKey: ['alertas', 'contrato', id],
+    queryFn: () => chamarApi<AlertaEnviadoTela[]>('GET', `/contratos/${id}/alertas-enviados`),
+    enabled: ativo,
+  })
+}
+
+export interface ResultadoAlertasTela {
+  hoje: string
+  simulacao: boolean
+  emAndamento: boolean
+  modo: 'smtp' | 'arquivo'
+  enviados: { contratoId: string; codigo: string; nome: string; para: string[]; itens: string[] }[]
+  ignorados: number
+  falhas: { contratoId: string; codigo: string; erro: string }[]
+  desistidos: { contratoId: string; codigo: string; itens: string[] }[]
+}
+
+/** Admin: roda a rotina diária de alertas agora (`simular` = só mostra o que seria enviado). */
+export function useExecutarAlertas() {
+  const cliente = useQueryClient()
+  return useMutation({
+    mutationFn: (simular: boolean) => chamarApi<ResultadoAlertasTela>('POST', '/admin/jobs/alertas', { simular }),
+    onSettled: () => Promise.all([cliente.invalidateQueries({ queryKey: ['alertas'] }), cliente.invalidateQueries({ queryKey: ['auditoria'] })]),
+  })
+}

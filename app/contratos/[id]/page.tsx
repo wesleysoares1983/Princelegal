@@ -12,6 +12,7 @@ import { formatarData, formatarDataHora, formatarMoeda } from '@/lib/shared/stat
 import { AbaDocumentos } from './AbaDocumentos'
 import { AbaHistorico } from './AbaHistorico'
 import { AbaObrigacoes } from './AbaObrigacoes'
+import { AlertasDoContrato } from './AlertasDoContrato'
 import { EdicaoContrato } from './EdicaoContrato'
 import { ModalEncerrar, ModalReabrir, ModalRenovar } from './Modais'
 
@@ -236,6 +237,7 @@ function Detalhe({ contrato }: { contrato: ContratoDetalhe }) {
               />
             </Quadro>
           )}
+          {aba === 'Vigência' && <AlertasDoContrato contratoId={contrato.id} />}
 
           {aba === 'Financeiro' && (
             <Quadro cor="--marca">

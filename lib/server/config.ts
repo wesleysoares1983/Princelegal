@@ -103,9 +103,60 @@ export const configArmazenamento = memorizar((): ConfigArmazenamento => {
   return { diretorio: e.ARMAZENAMENTO_DIR || '.dados/arquivos', maxBytes: e.UPLOAD_MAX_MB * 1024 * 1024 }
 })
 
+const opcional = () =>
+  z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => v || undefined)
+
+const esquemaEmail = z.object({
+  // Sem SMTP_HOST, os e-mails vao para arquivos .eml em .dados/emails (desenvolvimento).
+  SMTP_HOST: opcional(),
+  SMTP_PORT: z.coerce.number({ error: 'SMTP_PORT deve ser um número' }).int().positive().optional(),
+  SMTP_USER: opcional(),
+  SMTP_PASSWORD: opcional(),
+  /** Remetente; sem ele, usa SMTP_USER. */
+  SMTP_FROM: opcional(),
+  /** Endereco publico do app, para os links nos e-mails (o worker nao tem requisicao de onde tirar). */
+  APP_URL: opcional().pipe(z.url('APP_URL deve ser uma URL').optional()),
+  ALERTAS_ATIVOS: z
+    .enum(['true', 'false'], { error: 'ALERTAS_ATIVOS deve ser true ou false' })
+    .optional()
+    .transform((v) => v !== 'false'),
+  ALERTAS_CRON: z.string().trim().default('0 7 * * *'),
+  /** Pasta dos .eml quando nao ha SMTP (desenvolvimento/testes). */
+  EMAIL_ARQUIVOS_DIR: opcional(),
+})
+
+export interface ConfigEmail {
+  /** null = sem servidor: grava .eml em `pastaArquivos`. */
+  smtp: { host: string; port: number; seguro: boolean; usuario?: string; senha?: string } | null
+  remetente: string
+  pastaArquivos: string
+  appUrl: string
+}
+
+export const configEmail = memorizar((): ConfigEmail => {
+  const e = ler(esquemaEmail)
+  const port = e.SMTP_PORT ?? 587
+  return {
+    // 465 = TLS direto; 587/25 = STARTTLS (o nodemailer negocia sozinho).
+    smtp: e.SMTP_HOST ? { host: e.SMTP_HOST, port, seguro: port === 465, usuario: e.SMTP_USER, senha: e.SMTP_PASSWORD } : null,
+    remetente: e.SMTP_FROM ?? e.SMTP_USER ?? 'contratos-juridicos@localhost',
+    pastaArquivos: e.EMAIL_ARQUIVOS_DIR ?? '.dados/emails',
+    appUrl: (e.APP_URL ?? 'http://localhost:3400').replace(/\/+$/, ''),
+  }
+})
+
+export const configAlertas = memorizar(() => {
+  const e = ler(esquemaEmail)
+  return { ativos: e.ALERTAS_ATIVOS, cron: e.ALERTAS_CRON }
+})
+
 /** Confere todas as variaveis de uma vez; lanca com a lista completa do que esta errado. */
 export function validarAmbiente() {
-  const resultado = esquemaAppsPrincesa.and(esquemaSessao).and(esquemaBanco).and(esquemaArmazenamento).safeParse(process.env)
+  const resultado = esquemaAppsPrincesa.and(esquemaSessao).and(esquemaBanco).and(esquemaArmazenamento).and(esquemaEmail).safeParse(process.env)
   if (!resultado.success) {
     const problemas = resultado.error.issues.map((i) => `  - ${i.message}`).join('\n')
     throw new Error(`Configuração inválida no .env:\n${problemas}`)

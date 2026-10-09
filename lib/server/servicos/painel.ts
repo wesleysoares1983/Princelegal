@@ -7,7 +7,8 @@ import { ehAdmin } from '../auth'
 import { db } from '../db/cliente'
 import { padraoBusca, sqlDecisaoUrgente, sqlStatus, sqlVisivel } from '../db/consultas/contratos'
 import { auditoria, contratos, opcoesCadastro } from '../db/esquema'
-import { paraEvento, paraResumo } from './contratos'
+import { ultimosEnviados } from './alertas'
+import { paraEvento, paraResumo, type LinhaResumo } from './contratos'
 
 /**
  * Visoes agregadas: Inicio (painel), fila de Alertas e Auditoria geral.
@@ -19,14 +20,17 @@ const categoria = aliasedTable(opcoesCadastro, 'categoria')
 const area = aliasedTable(opcoesCadastro, 'area')
 const sucessor = aliasedTable(contratos, 'sucessor')
 
-function resumos(onde: SQL | undefined) {
-  return db
+/** Linhas prontas para `paraResumo`, ja ordenadas e limitadas (tipo explicito: a inferencia do builder se perdia). */
+async function resumos(onde: SQL | undefined, ordem: SQL[], limite?: number): Promise<LinhaResumo[]> {
+  const consulta = db
     .select({ c: contratos, categoria: categoria.valor, area: area.valor, sucessorCodigo: sucessor.codigo })
     .from(contratos)
     .innerJoin(categoria, eq(categoria.id, contratos.categoriaId))
     .innerJoin(area, eq(area.id, contratos.areaResponsavelId))
     .leftJoin(sucessor, eq(sucessor.id, contratos.renovadoPorContratoId))
     .where(onde)
+    .orderBy(...ordem)
+  return limite ? consulta.limit(limite) : consulta
 }
 
 /** GET /api/v1/painel -- as mesmas definicoes que a tela de Inicio ja usava. */
@@ -48,12 +52,8 @@ export async function painel(usuario: UsuarioSessao, hoje: string = hojeSP()): P
       })
       .from(contratos)
       .where(visivel),
-    resumos(and(visivel, sqlDecisaoUrgente(hoje)))
-      .orderBy(asc(contratos.dataFim))
-      .limit(20),
-    resumos(and(visivel, aberto))
-      .orderBy(asc(contratos.dataFim), asc(contratos.codigo))
-      .limit(10),
+    resumos(and(visivel, sqlDecisaoUrgente(hoje)), [asc(contratos.dataFim)], 20),
+    resumos(and(visivel, aberto), [asc(contratos.dataFim), asc(contratos.codigo)], 10),
   ])
 
   const { valorAnualAtivos, ...resto } = contagens
@@ -65,7 +65,7 @@ export async function painel(usuario: UsuarioSessao, hoje: string = hojeSP()): P
   }
 }
 
-/** Item da fila de Alertas; `ultimoAlertaEnviado` chega com os e-mails (M6). */
+/** Item da fila de Alertas, com o último e-mail de alerta enviado para o contrato. */
 export type ItemAlerta = ContratoResumo & {
   ultimoAlertaEnviado: { tipo: string; limiarDias: number; enviadoEm: string } | null
 }
@@ -74,13 +74,11 @@ export type ItemAlerta = ContratoResumo & {
 export async function filaAlertas(usuario: UsuarioSessao, hoje: string = hojeSP()): Promise<{ itens: ItemAlerta[] }> {
   const status = sqlStatus(hoje)
   const linhas = await resumos(
-    and(
-      sqlVisivel(usuario),
-      isNull(contratos.encerradoEm),
-      or(sql`${status} in ('vencido', 'alerta')`, sqlDecisaoUrgente(hoje)),
-    ),
-  ).orderBy(asc(contratos.dataFim), asc(contratos.codigo))
-  return { itens: linhas.map((r) => ({ ...paraResumo(r, hoje), ultimoAlertaEnviado: null })) }
+    and(sqlVisivel(usuario), isNull(contratos.encerradoEm), or(sql`${status} in ('vencido', 'alerta')`, sqlDecisaoUrgente(hoje))),
+    [asc(contratos.dataFim), asc(contratos.codigo)],
+  )
+  const ultimos = await ultimosEnviados(linhas.map((r) => r.c.id))
+  return { itens: linhas.map((r) => ({ ...paraResumo(r, hoje), ultimoAlertaEnviado: ultimos.get(r.c.id) ?? null })) }
 }
 
 /** Categorias que nao-admin ve na auditoria geral (eventos de contrato que ele pode ver). */

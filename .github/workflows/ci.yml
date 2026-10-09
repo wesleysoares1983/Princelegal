@@ -49,3 +49,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build do worker
+        run: npm run worker:build

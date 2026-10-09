@@ -102,7 +102,7 @@ function consultaResumo(ex: Executor) {
     .leftJoin(sucessor, eq(sucessor.id, contratos.renovadoPorContratoId))
 }
 
-interface LinhaResumo {
+export interface LinhaResumo {
   c: Linha
   categoria: string
   area: string

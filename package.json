@@ -14,12 +14,18 @@
     "db:gerar": "drizzle-kit generate",
     "db:migrar": "drizzle-kit migrate",
     "db:teste:subir": "node testes/docker.mjs subir",
-    "db:teste:parar": "node testes/docker.mjs parar"
+    "db:teste:parar": "node testes/docker.mjs parar",
+    "worker:build": "node scripts/build-worker.mjs",
+    "worker": "npm run worker:build && node dist/worker.cjs",
+    "alertas:simular": "npm run worker:build && node dist/worker.cjs alertas --simular",
+    "alertas:agora": "npm run worker:build && node dist/worker.cjs alertas"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
     "drizzle-orm": "^0.45.3",
     "next": "16.3.4",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.0.16",
     "pino": "^10.4.0",
     "postgres": "^3.4.9",
     "react": "19.2.0",
@@ -30,10 +36,12 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.10.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "drizzle-kit": "^0.31.11",
     "embedded-postgres": "14.23.0-beta.17",
+    "esbuild": "^0.28.2",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0",
     "vitest": "^5.0.3"

@@ -29,6 +29,8 @@ const ARMAZENAMENTO_TESTE = join(tmpdir(), 'princelegal-arquivos-teste')
 
 const bancoDeTeste = {
   ARMAZENAMENTO_DIR: ARMAZENAMENTO_TESTE,
+  EMAIL_ARQUIVOS_DIR: join(tmpdir(), 'princelegal-emails-teste'),
+  APP_URL: 'http://contratos.teste',
   UPLOAD_MAX_MB: '2',
   POSTGRES_HOST: process.env.POSTGRES_TEST_HOST ?? 'localhost',
   POSTGRES_PORT: process.env.POSTGRES_TEST_PORT ?? '54329',
