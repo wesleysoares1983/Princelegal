@@ -11,6 +11,7 @@ import type { ContratoDetalhe } from '@/lib/shared/contratos'
 import { formatarData, formatarDataHora, formatarMoeda } from '@/lib/shared/status'
 import { AbaDocumentos } from './AbaDocumentos'
 import { AbaHistorico } from './AbaHistorico'
+import { AbaObrigacoes } from './AbaObrigacoes'
 import { EdicaoContrato } from './EdicaoContrato'
 import { ModalEncerrar, ModalReabrir, ModalRenovar } from './Modais'
 
@@ -258,11 +259,7 @@ function Detalhe({ contrato }: { contrato: ContratoDetalhe }) {
             </Quadro>
           )}
 
-          {aba === 'Obrigações' && (
-            <Quadro cor="--status-atencao" grade={false}>
-              <p className="text-center text-[13px] text-tinta-fraca">O registro de obrigações deste contrato ainda não está disponível.</p>
-            </Quadro>
-          )}
+          {aba === 'Obrigações' && <AbaObrigacoes contrato={contrato} />}
 
           {aba === 'Documentos' && <AbaDocumentos contrato={contrato} />}
 

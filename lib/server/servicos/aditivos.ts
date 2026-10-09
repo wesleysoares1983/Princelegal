@@ -15,6 +15,7 @@ import { ErroApi, erroConflito, erroRegraNegocio, erroValidacao } from '../http/
 import type { ArquivoValidado } from '../http/upload'
 import { carregar, inserirContrato, montarDetalhe, type Linha } from './contratos'
 import { inserirDocumento } from './documentos'
+import { aoProrrogar, aoReduzirVigencia, aoRenovar } from './obrigacoes'
 
 /**
  * Aditivos, anulacao de aditivo e renovacao (docs/BACKEND_IMPLEMENTATION.md
@@ -24,8 +25,9 @@ import { inserirDocumento } from './documentos'
  * os da ULTIMA vigencia valida (nao anulada). Toda operacao aqui grava a
  * vigencia e o contrato na mesma transacao, com o contrato travado.
  *
- * Obrigacoes (transferir na renovacao, retomar recorrencia apos aditivo)
- * entram no M5, quando a tabela existir.
+ * Obrigacoes acompanham: aditivo que estende retoma series recorrentes;
+ * encurtar (aditivo ou anulacao) cancela ocorrencias geradas alem do fim;
+ * renovar leva as series pendentes para o contrato novo.
  */
 
 const carimboDe = (u: UsuarioSessao) => ({ matricula: u.matricula, nome: u.nome })
@@ -113,6 +115,9 @@ export async function registrarAditivo(
         .set({ dataFim: dados.dataFim, valorMensal: dinheiroDb(dados.valorMensal), versao: c.versao + 1, atualizadoEm: new Date().toISOString() })
         .where(eq(contratos.id, c.id))
         .returning()
+      // Obrigacoes acompanham a vigencia: estendeu, series paradas retomam; encurtou, geradas alem do fim saem.
+      if (dados.dataFim > c.dataFim) await aoProrrogar(tx, atualizado, contexto)
+      if (dados.dataFim < c.dataFim) await aoReduzirVigencia(tx, atualizado, `Vigência reduzida pelo Aditivo ${nn(numero)}`, usuario, contexto)
 
       const partes = [
         dados.dataFim !== c.dataFim ? `vigência ${formatarData(c.dataFim)} → ${formatarData(dados.dataFim)}` : null,
@@ -171,6 +176,11 @@ export async function anularAditivo(
       .set({ dataFim: anterior.dataFim, valorMensal: anterior.valorMensal, versao: c.versao + 1, atualizadoEm: new Date().toISOString() })
       .where(eq(contratos.id, c.id))
       .returning()
+    if (anterior.dataFim < ultimo.dataFim) {
+      await aoReduzirVigencia(tx, atualizado, `Vigência reduzida pela anulação do Aditivo ${nn(ultimo.numero ?? 0)}`, usuario, contexto)
+    } else if (anterior.dataFim > ultimo.dataFim) {
+      await aoProrrogar(tx, atualizado, contexto) // o aditivo anulado tinha encurtado
+    }
 
     await registrarAuditoria(
       tx,
@@ -279,6 +289,8 @@ export async function renovarContrato(
           atualizadoEm: new Date().toISOString(),
         })
         .where(eq(contratos.id, antigo.id))
+
+      await aoRenovar(tx, antigo, novo, usuario, contexto)
 
       await registrarAuditoria(
         tx,

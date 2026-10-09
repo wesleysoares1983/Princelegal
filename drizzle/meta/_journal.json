@@ -43,6 +43,13 @@
       "when": 1791556427412,
       "tag": "0005_documentos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791567908326,
+      "tag": "0006_obrigacoes",
+      "breakpoints": true
     }
   ]
 }

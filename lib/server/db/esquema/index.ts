@@ -1,4 +1,5 @@
 export * from './auditoria'
 export * from './contratos'
 export * from './documentos'
+export * from './obrigacoes'
 export * from './opcoes'

@@ -44,6 +44,7 @@ import {
 import type { ArquivoValidado } from '../http/upload'
 import { continuariaVendo, ehEnvolvido, permissoesDoContrato, podeVer } from '../permissoes'
 import { inserirDocumento } from './documentos'
+import { aoEncerrar, aoReabrir } from './obrigacoes'
 
 /**
  * Contratos -- regras de negocio (docs/BACKEND_IMPLEMENTATION.md §7, §8.2–8.5).
@@ -734,7 +735,7 @@ export async function encerrarContrato(
       .where(eq(contratos.id, id))
       .returning()
 
-    // Obrigacoes futuras pendentes passam a ser canceladas aqui quando existirem (M5).
+    await aoEncerrar(tx, id, data, usuario, contexto)
     await registrarAuditoria(
       tx,
       {
@@ -783,6 +784,7 @@ export async function reabrirContrato(
       })
       .where(eq(contratos.id, id))
       .returning()
+    await aoReabrir(tx, id, usuario, contexto)
 
     await registrarAuditoria(
       tx,
