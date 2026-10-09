@@ -1,0 +1,1236 @@
+{
+  "id": "f9108b3d-bd01-4012-a764-9ed68acab3d7",
+  "prevId": "90a8e6f3-7cb7-4b0f-bdc0-45acd82597fb",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.auditoria": {
+      "name": "auditoria",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ocorrido_em": {
+          "name": "ocorrido_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "usuario_matricula": {
+          "name": "usuario_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_nome": {
+          "name": "usuario_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contrato_id": {
+          "name": "contrato_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "categoria": {
+          "name": "categoria",
+          "type": "categoria_auditoria",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "acao": {
+          "name": "acao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "auditoria_contrato_ocorrido": {
+          "name": "auditoria_contrato_ocorrido",
+          "columns": [
+            {
+              "expression": "contrato_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "ocorrido_em",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auditoria_ocorrido": {
+          "name": "auditoria_ocorrido",
+          "columns": [
+            {
+              "expression": "ocorrido_em",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "auditoria_usuario": {
+          "name": "auditoria_usuario",
+          "columns": [
+            {
+              "expression": "usuario_matricula",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "auditoria_contrato_id_contratos_id_fk": {
+          "name": "auditoria_contrato_id_contratos_id_fk",
+          "tableFrom": "auditoria",
+          "tableTo": "contratos",
+          "columnsFrom": [
+            "contrato_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.contrato_vigencias": {
+      "name": "contrato_vigencias",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "contrato_id": {
+          "name": "contrato_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_vigencia",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero": {
+          "name": "numero",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_inicio": {
+          "name": "data_inicio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_fim": {
+          "name": "data_fim",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_mensal": {
+          "name": "valor_mensal",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observacao": {
+          "name": "observacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "documento_id": {
+          "name": "documento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_em": {
+          "name": "anulado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_por_matricula": {
+          "name": "anulado_por_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anulado_por_nome": {
+          "name": "anulado_por_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificativa_anulacao": {
+          "name": "justificativa_anulacao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_por_matricula": {
+          "name": "criado_por_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_por_nome": {
+          "name": "criado_por_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "vigencias_contrato": {
+          "name": "vigencias_contrato",
+          "columns": [
+            {
+              "expression": "contrato_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "criado_em",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contrato_vigencias_contrato_id_contratos_id_fk": {
+          "name": "contrato_vigencias_contrato_id_contratos_id_fk",
+          "tableFrom": "contrato_vigencias",
+          "tableTo": "contratos",
+          "columnsFrom": [
+            "contrato_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contrato_vigencias_documento_id_documentos_id_fk": {
+          "name": "contrato_vigencias_documento_id_documentos_id_fk",
+          "tableFrom": "contrato_vigencias",
+          "tableTo": "documentos",
+          "columnsFrom": [
+            "documento_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "vigencias_ordenada": {
+          "name": "vigencias_ordenada",
+          "value": "\"contrato_vigencias\".\"data_fim\" >= \"contrato_vigencias\".\"data_inicio\""
+        },
+        "vigencias_so_aditivo_anula": {
+          "name": "vigencias_so_aditivo_anula",
+          "value": "\"contrato_vigencias\".\"anulado_em\" is null or \"contrato_vigencias\".\"tipo\" = 'Aditivo'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contratos": {
+      "name": "contratos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "codigo": {
+          "name": "codigo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "categoria_id": {
+          "name": "categoria_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "segmento_id": {
+          "name": "segmento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "empresa_id": {
+          "name": "empresa_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "filial_id": {
+          "name": "filial_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "area_responsavel_id": {
+          "name": "area_responsavel_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "centro_custo_id": {
+          "name": "centro_custo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fornecedor_nome": {
+          "name": "fornecedor_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fornecedor_documento": {
+          "name": "fornecedor_documento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fornecedor_contato": {
+          "name": "fornecedor_contato",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "objeto": {
+          "name": "objeto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observacoes": {
+          "name": "observacoes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gestor_nome": {
+          "name": "gestor_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gestor_email": {
+          "name": "gestor_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsavel_juridico_nome": {
+          "name": "responsavel_juridico_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "responsavel_juridico_email": {
+          "name": "responsavel_juridico_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "acesso_restrito": {
+          "name": "acesso_restrito",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "data_inicio": {
+          "name": "data_inicio",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_fim": {
+          "name": "data_fim",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "renovacao_automatica": {
+          "name": "renovacao_automatica",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prazo_aviso_cancelamento_dias": {
+          "name": "prazo_aviso_cancelamento_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor_mensal": {
+          "name": "valor_mensal",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "forma_pagamento": {
+          "name": "forma_pagamento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indice_reajuste": {
+          "name": "indice_reajuste",
+          "type": "indice_reajuste",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data_base_reajuste": {
+          "name": "data_base_reajuste",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "multa_rescisao": {
+          "name": "multa_rescisao",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acao_vencimento": {
+          "name": "acao_vencimento",
+          "type": "acao_vencimento",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "responsavel_acao": {
+          "name": "responsavel_acao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prazo_acao": {
+          "name": "prazo_acao",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status_acao": {
+          "name": "status_acao",
+          "type": "status_acao",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "encerrado_em": {
+          "name": "encerrado_em",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_encerramento": {
+          "name": "motivo_encerramento",
+          "type": "motivo_encerramento",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "justificativa_encerramento": {
+          "name": "justificativa_encerramento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "encerrado_por_matricula": {
+          "name": "encerrado_por_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "encerrado_por_nome": {
+          "name": "encerrado_por_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "renova_contrato_id": {
+          "name": "renova_contrato_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "renovado_por_contrato_id": {
+          "name": "renovado_por_contrato_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_por_matricula": {
+          "name": "criado_por_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_por_nome": {
+          "name": "criado_por_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "versao": {
+          "name": "versao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "contratos_data_fim": {
+          "name": "contratos_data_fim",
+          "columns": [
+            {
+              "expression": "data_fim",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contratos_gestor_email": {
+          "name": "contratos_gestor_email",
+          "columns": [
+            {
+              "expression": "gestor_email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contratos_juridico_email": {
+          "name": "contratos_juridico_email",
+          "columns": [
+            {
+              "expression": "responsavel_juridico_email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contratos_fornecedor_documento": {
+          "name": "contratos_fornecedor_documento",
+          "columns": [
+            {
+              "expression": "fornecedor_documento",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contratos_categoria_id_opcoes_cadastro_id_fk": {
+          "name": "contratos_categoria_id_opcoes_cadastro_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "opcoes_cadastro",
+          "columnsFrom": [
+            "categoria_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_segmento_id_opcoes_cadastro_id_fk": {
+          "name": "contratos_segmento_id_opcoes_cadastro_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "opcoes_cadastro",
+          "columnsFrom": [
+            "segmento_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_empresa_id_opcoes_cadastro_id_fk": {
+          "name": "contratos_empresa_id_opcoes_cadastro_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "opcoes_cadastro",
+          "columnsFrom": [
+            "empresa_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_filial_id_opcoes_cadastro_id_fk": {
+          "name": "contratos_filial_id_opcoes_cadastro_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "opcoes_cadastro",
+          "columnsFrom": [
+            "filial_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_area_responsavel_id_opcoes_cadastro_id_fk": {
+          "name": "contratos_area_responsavel_id_opcoes_cadastro_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "opcoes_cadastro",
+          "columnsFrom": [
+            "area_responsavel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_centro_custo_id_opcoes_cadastro_id_fk": {
+          "name": "contratos_centro_custo_id_opcoes_cadastro_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "opcoes_cadastro",
+          "columnsFrom": [
+            "centro_custo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_renova_contrato_id_contratos_id_fk": {
+          "name": "contratos_renova_contrato_id_contratos_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "contratos",
+          "columnsFrom": [
+            "renova_contrato_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "contratos_renovado_por_contrato_id_contratos_id_fk": {
+          "name": "contratos_renovado_por_contrato_id_contratos_id_fk",
+          "tableFrom": "contratos",
+          "tableTo": "contratos",
+          "columnsFrom": [
+            "renovado_por_contrato_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "contratos_codigo_unique": {
+          "name": "contratos_codigo_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "codigo"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contratos_vigencia_ordenada": {
+          "name": "contratos_vigencia_ordenada",
+          "value": "\"contratos\".\"data_fim\" >= \"contratos\".\"data_inicio\""
+        },
+        "contratos_prazo_aviso": {
+          "name": "contratos_prazo_aviso",
+          "value": "\"contratos\".\"prazo_aviso_cancelamento_dias\" between 0 and 3650"
+        },
+        "contratos_valores_positivos": {
+          "name": "contratos_valores_positivos",
+          "value": "\"contratos\".\"valor_mensal\" >= 0 and (\"contratos\".\"multa_rescisao\" is null or \"contratos\".\"multa_rescisao\" >= 0)"
+        },
+        "contratos_encerramento_completo": {
+          "name": "contratos_encerramento_completo",
+          "value": "(\"contratos\".\"encerrado_em\" is null) = (\"contratos\".\"motivo_encerramento\" is null)"
+        },
+        "contratos_renovado_tem_sucessor": {
+          "name": "contratos_renovado_tem_sucessor",
+          "value": "(\"contratos\".\"motivo_encerramento\" = 'renovado') = (\"contratos\".\"renovado_por_contrato_id\" is not null)"
+        },
+        "contratos_acao_completa": {
+          "name": "contratos_acao_completa",
+          "value": "\"contratos\".\"acao_vencimento\" is null or (\"contratos\".\"responsavel_acao\" is not null and \"contratos\".\"prazo_acao\" is not null and \"contratos\".\"status_acao\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.documento_versoes": {
+      "name": "documento_versoes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "documento_id": {
+          "name": "documento_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "versao": {
+          "name": "versao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome_arquivo": {
+          "name": "nome_arquivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime": {
+          "name": "mime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tamanho_bytes": {
+          "name": "tamanho_bytes",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave_armazenamento": {
+          "name": "chave_armazenamento",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enviado_por_matricula": {
+          "name": "enviado_por_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enviado_por_nome": {
+          "name": "enviado_por_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enviado_em": {
+          "name": "enviado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "documento_versoes_documento_id_documentos_id_fk": {
+          "name": "documento_versoes_documento_id_documentos_id_fk",
+          "tableFrom": "documento_versoes",
+          "tableTo": "documentos",
+          "columnsFrom": [
+            "documento_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "documento_versoes_chaveArmazenamento_unique": {
+          "name": "documento_versoes_chaveArmazenamento_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "chave_armazenamento"
+          ]
+        },
+        "documento_versoes_numero": {
+          "name": "documento_versoes_numero",
+          "nullsNotDistinct": false,
+          "columns": [
+            "documento_id",
+            "versao"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "documento_versoes_tamanho": {
+          "name": "documento_versoes_tamanho",
+          "value": "\"documento_versoes\".\"tamanho_bytes\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.documentos": {
+      "name": "documentos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "contrato_id": {
+          "name": "contrato_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_documento",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "versao_atual": {
+          "name": "versao_atual",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "removido_em": {
+          "name": "removido_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "removido_por_matricula": {
+          "name": "removido_por_matricula",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "removido_por_nome": {
+          "name": "removido_por_nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivo_remocao": {
+          "name": "motivo_remocao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "documentos_contrato": {
+          "name": "documentos_contrato",
+          "columns": [
+            {
+              "expression": "contrato_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "criado_em",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "documentos_contrato_id_contratos_id_fk": {
+          "name": "documentos_contrato_id_contratos_id_fk",
+          "tableFrom": "documentos",
+          "tableTo": "contratos",
+          "columnsFrom": [
+            "contrato_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.opcoes_cadastro": {
+      "name": "opcoes_cadastro",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "campo": {
+          "name": "campo",
+          "type": "campo_opcao",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valor": {
+          "name": "valor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ativo": {
+          "name": "ativo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "ordem": {
+          "name": "ordem",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "versao": {
+          "name": "versao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "opcoes_cadastro_campo_valor_unico": {
+          "name": "opcoes_cadastro_campo_valor_unico",
+          "columns": [
+            {
+              "expression": "campo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(f_unaccent(\"valor\"))",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.categoria_auditoria": {
+      "name": "categoria_auditoria",
+      "schema": "public",
+      "values": [
+        "contrato",
+        "documento",
+        "obrigacao",
+        "acesso",
+        "configuracao",
+        "exportacao",
+        "sistema"
+      ]
+    },
+    "public.acao_vencimento": {
+      "name": "acao_vencimento",
+      "schema": "public",
+      "values": [
+        "Renovar",
+        "Renegociar",
+        "Encerrar",
+        "Em análise"
+      ]
+    },
+    "public.indice_reajuste": {
+      "name": "indice_reajuste",
+      "schema": "public",
+      "values": [
+        "IPCA",
+        "IGP-M",
+        "INPC",
+        "Fixo",
+        "Outro"
+      ]
+    },
+    "public.motivo_encerramento": {
+      "name": "motivo_encerramento",
+      "schema": "public",
+      "values": [
+        "manual",
+        "renovado"
+      ]
+    },
+    "public.status_acao": {
+      "name": "status_acao",
+      "schema": "public",
+      "values": [
+        "Pendente",
+        "Em andamento",
+        "Concluída"
+      ]
+    },
+    "public.tipo_vigencia": {
+      "name": "tipo_vigencia",
+      "schema": "public",
+      "values": [
+        "Original",
+        "Aditivo",
+        "Renovação"
+      ]
+    },
+    "public.tipo_documento": {
+      "name": "tipo_documento",
+      "schema": "public",
+      "values": [
+        "Contrato",
+        "Aditivo",
+        "Renovação",
+        "Anexo",
+        "Comprovante",
+        "Parecer jurídico"
+      ]
+    },
+    "public.campo_opcao": {
+      "name": "campo_opcao",
+      "schema": "public",
+      "values": [
+        "categoria",
+        "segmento",
+        "empresa",
+        "filial",
+        "centro-custo",
+        "area-responsavel"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {
+    "public.contrato_codigo_seq": {
+      "name": "contrato_codigo_seq",
+      "schema": "public",
+      "increment": "1",
+      "startWith": "1",
+      "minValue": "1",
+      "maxValue": "9223372036854775807",
+      "cache": "1",
+      "cycle": false
+    }
+  },
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

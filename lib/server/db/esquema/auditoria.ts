@@ -1,4 +1,5 @@
 import { bigserial, index, inet, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { contratos } from './contratos'
 
 export const categoriaAuditoria = pgEnum('categoria_auditoria', [
   'contrato',
@@ -24,8 +25,7 @@ export const auditoria = pgTable(
     ocorridoEm: timestamp({ withTimezone: true }).notNull().defaultNow(),
     usuarioMatricula: text(),
     usuarioNome: text(),
-    // Vira chave estrangeira para `contratos` quando a tabela existir (M2).
-    contratoId: uuid(),
+    contratoId: uuid().references(() => contratos.id, { onDelete: 'restrict' }),
     categoria: categoriaAuditoria().notNull(),
     /** Codigo de maquina, ex.: `contrato.criado`. */
     acao: text().notNull(),

@@ -1,38 +1,22 @@
 'use client'
 
 import Link from 'next/link'
-import { notFound, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useState } from 'react'
+import { EstadoConsulta } from '@/components/EstadoConsulta'
 import { SeloStatus } from '@/components/SeloStatus'
-import { useUsuario } from '@/components/ProvedorUsuario'
-import { buscarContrato } from '@/lib/contratos'
-import { hojeSP } from '@/lib/shared/datas'
-import { avaliarContrato, formatarData, formatarMoeda, proximoReajuste } from '@/lib/shared/status'
-import type { Documento, RegistroHistorico } from '@/lib/tipos'
+import { ErroDaApi } from '@/lib/api/cliente'
+import { useAuditoriaDoContrato, useContrato } from '@/lib/api/contratos'
+import type { ContratoDetalhe } from '@/lib/shared/contratos'
+import { formatarData, formatarDataHora, formatarMoeda } from '@/lib/shared/status'
+import { AbaDocumentos } from './AbaDocumentos'
+import { AbaHistorico } from './AbaHistorico'
+import { EdicaoContrato } from './EdicaoContrato'
+import { ModalEncerrar, ModalReabrir, ModalRenovar } from './Modais'
 
-const EXTENSOES_ACEITAS = '.pdf,.doc,.docx'
-const TIPOS_ACEITOS = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-]
-
-function formatarTamanho(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-const ABAS = [
-  'Identificação',
-  'Vigência',
-  'Financeiro',
-  'Responsabilidade',
-  'Obrigações',
-  'Documentos',
-  'Histórico',
-  'Auditoria',
-] as const
+const ABAS = ['Identificação', 'Vigência', 'Financeiro', 'Responsabilidade', 'Obrigações', 'Documentos', 'Histórico', 'Auditoria'] as const
 type Aba = (typeof ABAS)[number]
+
 
 function Campo({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
   return (
@@ -43,105 +27,53 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: React.ReactNode }) {
   )
 }
 
+function Quadro({ cor, children, grade = true }: { cor: string; children: React.ReactNode; grade?: boolean }) {
+  return (
+    <div
+      className={`grad-quadro rounded-xl border p-5 ${grade ? 'grid grid-cols-2 gap-5 sm:grid-cols-3' : ''}`}
+      style={{ '--cor-quadro': `var(${cor})` } as React.CSSProperties}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** Opção desativada depois do cadastro continua valendo no contrato -- e a tela diz isso. */
+const nomeOpcao = (o: { valor: string; ativo: boolean }) => (o.ativo ? o.valor : `${o.valor} (inativa)`)
+
 export default function DetalheContrato() {
   const { id } = useParams<{ id: string }>()
-  const contratoBase = buscarContrato(id)
-  const usuario = useUsuario()
+  const { data: contrato, isPending, error, refetch } = useContrato(id)
+
+  if (error instanceof ErroDaApi && error.status === 404) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-3 p-6">
+        <Link href="/contratos" className="text-[12px] text-tinta-fraca hover:text-tinta">
+          ← Contratos
+        </Link>
+        <p className="text-[13px] text-tinta-fraca">Contrato não encontrado.</p>
+      </div>
+    )
+  }
+  if (!contrato) {
+    return (
+      <div className="mx-auto max-w-6xl p-6">
+        <EstadoConsulta carregando={isPending} erro={error} tentarDeNovo={refetch} />
+      </div>
+    )
+  }
+  return <Detalhe contrato={contrato} />
+}
+
+function Detalhe({ contrato }: { contrato: ContratoDetalhe }) {
   const [aba, setAba] = useState<Aba>('Identificação')
-  // Encerrar so muda o status calculado -- o registro do contrato continua
-  // existindo e visivel, nunca some da lista nem do historico. Sem backend
-  // ainda, isto fica local a tela; ao ganhar API vira uma chamada de verdade.
-  const [encerradoLocalEm, setEncerradoLocalEm] = useState<string | undefined>(undefined)
+  const [editando, setEditando] = useState(false)
+  const [modal, setModal] = useState<'encerrar' | 'reabrir' | 'renovar' | null>(null)
+  const [paginaAuditoria, setPaginaAuditoria] = useState(1)
+  const auditoria = useAuditoriaDoContrato(contrato.id, paginaAuditoria, aba === 'Auditoria')
 
-  // Aditivo: mesma ideia do encerramento -- entra na aba Historico e, sendo o
-  // registro mais recente, passa a valer como a vigencia e o valor atuais do
-  // contrato (e por isso entram no calculo de status/vencimento tambem).
-  const [aditivosLocais, setAditivosLocais] = useState<RegistroHistorico[]>([])
-  const [documentosLocais, setDocumentosLocais] = useState<Documento[]>([])
-  const [aditivoAberto, setAditivoAberto] = useState(false)
-  const [aditivo, setAditivo] = useState({ dataInicio: '', dataFim: '', valorMensal: '', observacao: '' })
-  const [arquivoAditivo, setArquivoAditivo] = useState<File | null>(null)
-  const [erroAditivo, setErroAditivo] = useState('')
-
-  if (!contratoBase) notFound()
-
-  const historico = [...contratoBase.historico, ...aditivosLocais]
-  const documentos = [...contratoBase.documentos, ...documentosLocais]
-  const ultimoRegistro = historico[historico.length - 1]
-  const contrato = {
-    ...contratoBase,
-    encerradoEm: contratoBase.encerradoEm ?? encerradoLocalEm,
-    dataFim: ultimoRegistro?.dataFim ?? contratoBase.dataFim,
-    valorMensal: ultimoRegistro?.valorMensal ?? contratoBase.valorMensal,
-    historico,
-    documentos,
-  }
-  const av = avaliarContrato(contrato)
-  const reajuste = proximoReajuste(contrato.dataBaseReajuste)
-
-  function encerrar() {
-    if (!confirm('Encerrar este contrato? Ele continua no histórico e na auditoria — não é possível excluí-lo.')) return
-    setEncerradoLocalEm(hojeSP())
-  }
-
-  function abrirAditivo() {
-    setAditivo({ dataInicio: contrato.dataInicio, dataFim: contrato.dataFim, valorMensal: String(contrato.valorMensal), observacao: '' })
-    setArquivoAditivo(null)
-    setErroAditivo('')
-    setAditivoAberto(true)
-  }
-
-  function selecionarArquivoAditivo(escolhido: File | null) {
-    if (!escolhido) return
-    if (!TIPOS_ACEITOS.includes(escolhido.type) && !/\.(pdf|docx?)$/i.test(escolhido.name)) {
-      setErroAditivo('Formato não aceito. Envie um PDF ou um Word (.doc/.docx).')
-      return
-    }
-    setErroAditivo('')
-    setArquivoAditivo(escolhido)
-  }
-
-  function registrarAditivo() {
-    if (!aditivo.dataInicio || !aditivo.dataFim || !aditivo.valorMensal) {
-      setErroAditivo('Preencha início, término e o novo valor mensal.')
-      return
-    }
-    const valor = Number(aditivo.valorMensal.replace(',', '.'))
-    if (Number.isNaN(valor) || valor < 0) {
-      setErroAditivo('Informe um valor mensal válido.')
-      return
-    }
-    const numero = aditivosLocais.length + 1
-    setAditivosLocais((atual) => [
-      ...atual,
-      {
-        id: `aditivo-local-${numero}`,
-        tipo: 'Aditivo',
-        dataInicio: aditivo.dataInicio,
-        dataFim: aditivo.dataFim,
-        valorMensal: valor,
-        observacao: aditivo.observacao.trim() || undefined,
-      },
-    ])
-    // O arquivo do aditivo tambem entra na aba Documentos, no mesmo lugar em
-    // que o contrato ficaria se o upload fosse de verdade -- sem isto, quem
-    // assina o aditivo so acharia o PDF procurando no Historico.
-    if (arquivoAditivo) {
-      setDocumentosLocais((atual) => [
-        ...atual,
-        {
-          id: `documento-local-${atual.length + 1}`,
-          nome: arquivoAditivo.name,
-          tipo: 'Aditivo',
-          versao: numero,
-          enviadoEm: hojeSP(),
-          enviadoPor: usuario?.nome ?? 'Usuário',
-        },
-      ])
-    }
-    setAditivoAberto(false)
-    setArquivoAditivo(null)
-  }
+  const av = contrato.avaliacao
+  const p = contrato.permissoes
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-6">
@@ -150,365 +82,243 @@ export default function DetalheContrato() {
           <Link href="/contratos" className="text-[12px] text-tinta-fraca hover:text-tinta">
             ← Contratos
           </Link>
-          <h1 className="mt-1 text-lg font-semibold text-tinta">{contrato.nome}</h1>
+          <h1 className="mt-1 text-lg font-semibold text-tinta">
+            {contrato.nome}
+            {contrato.acessoRestrito && (
+              <span className="ml-2 text-[12px]" title="Acesso restrito: só administradores, o gestor e o responsável jurídico">
+                🔒
+              </span>
+            )}
+          </h1>
           <p className="font-mono text-[12px] text-tinta-fraca">{contrato.codigo}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SeloStatus status={av.status} rotulo={av.rotulo} />
-          {av.status !== 'encerrado' && (
+          {p.editar && !editando && (
             <button
-              onClick={encerrar}
+              type="button"
+              onClick={() => setEditando(true)}
+              className="rounded-md border border-borda px-3 py-2 text-[12px] font-semibold text-tinta-fraca hover:text-tinta"
+            >
+              Editar
+            </button>
+          )}
+          {p.encerrar && (
+            <button
+              type="button"
+              onClick={() => setModal('encerrar')}
               className="rounded-md border border-borda px-3 py-2 text-[12px] font-semibold text-tinta-fraca hover:border-status-vencido/50 hover:text-status-vencido"
-              title="Marca o contrato como inativo. Não é possível excluí-lo — ele permanece no histórico e na auditoria."
+              title="Marca o contrato como encerrado. Não é possível excluí-lo — ele permanece no histórico e na auditoria."
             >
               Encerrar contrato
             </button>
           )}
-          <button
-            disabled={av.status === 'encerrado'}
-            className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Renovar contrato
-          </button>
+          {p.reabrir && (
+            <button
+              type="button"
+              onClick={() => setModal('reabrir')}
+              className="rounded-md border border-borda px-3 py-2 text-[12px] font-semibold text-tinta-fraca hover:text-tinta"
+            >
+              Reabrir
+            </button>
+          )}
+          {p.renovar && (
+            <button
+              type="button"
+              onClick={() => setModal('renovar')}
+              className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
+            >
+              Renovar contrato
+            </button>
+          )}
         </div>
       </div>
 
+      {contrato.encerramento && (
+        <div className="grad-quadro rounded-lg border px-4 py-3 text-[12px]" style={{ '--cor-quadro': 'var(--status-encerrado)' } as React.CSSProperties}>
+          <p className="text-tinta">
+            {contrato.encerramento.motivo === 'renovado' ? 'Renovado' : 'Encerrado'} em {formatarData(contrato.encerramento.data)}
+            {contrato.encerramento.por && <> por {contrato.encerramento.por.nome}</>}
+            {contrato.renovadoPor && (
+              <>
+                {' '}
+                —{' '}
+                <Link href={`/contratos/${contrato.renovadoPor.id}`} className="font-mono text-marca hover:underline">
+                  {contrato.renovadoPor.codigo}
+                </Link>
+              </>
+            )}
+          </p>
+          {contrato.encerramento.justificativa && <p className="mt-0.5 text-tinta-fraca">{contrato.encerramento.justificativa}</p>}
+        </div>
+      )}
+
+      {contrato.renova && (
+        <p className="text-[12px] text-tinta-fraca">
+          Renovação de{' '}
+          <Link href={`/contratos/${contrato.renova.id}`} className="font-mono text-marca hover:underline">
+            {contrato.renova.codigo}
+          </Link>
+        </p>
+      )}
+
       {av.decisaoUrgente && (
-        <div
-          className="grad-quadro rounded-lg border px-4 py-3 text-[12px] text-status-alerta"
-          style={{ '--cor-quadro': 'var(--status-alerta)' } as React.CSSProperties}
-        >
-          ⚠️ Faltam {av.diasDecisao} dia{av.diasDecisao === 1 ? '' : 's'} para o prazo-limite de manifestação sobre renovação/cancelamento
-          (aviso prévio de {contrato.prazoAvisoCancelamentoDias} dias).
+        <div className="grad-quadro rounded-lg border px-4 py-3 text-[12px] text-status-alerta" style={{ '--cor-quadro': 'var(--status-alerta)' } as React.CSSProperties}>
+          ⚠️{' '}
+          {av.diasDecisao >= 0
+            ? `Faltam ${av.diasDecisao} dia${av.diasDecisao === 1 ? '' : 's'} para o prazo-limite de manifestação sobre renovação/cancelamento`
+            : `O prazo-limite de manifestação sobre renovação/cancelamento passou há ${-av.diasDecisao} dia${av.diasDecisao === -1 ? '' : 's'}`}{' '}
+          ({formatarData(contrato.dataLimiteAviso)}; aviso prévio de {contrato.prazoAvisoCancelamentoDias} dias).
         </div>
       )}
 
       {contrato.acaoVencimento && (
-        <div
-          className="grad-quadro rounded-lg border px-4 py-3"
-          style={{ '--cor-quadro': 'var(--status-atencao)' } as React.CSSProperties}
-        >
+        <div className="grad-quadro rounded-lg border px-4 py-3" style={{ '--cor-quadro': 'var(--status-atencao)' } as React.CSSProperties}>
           <p className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Ação para o vencimento</p>
           <p className="mt-1 text-[13px] text-tinta">
-            <span className="font-semibold">{contrato.acaoVencimento}</span>
-            {contrato.responsavelAcao && <> · responsável {contrato.responsavelAcao}</>}
-            {contrato.prazoAcao && <> · prazo {formatarData(contrato.prazoAcao)}</>}
-            {contrato.statusAcao && <> · {contrato.statusAcao}</>}
+            <span className="font-semibold">{contrato.acaoVencimento.acao}</span> · responsável {contrato.acaoVencimento.responsavel} · prazo{' '}
+            {formatarData(contrato.acaoVencimento.prazo)} · {contrato.acaoVencimento.status}
           </p>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1 border-b border-borda">
-        {ABAS.map((a) => (
-          <button
-            key={a}
-            onClick={() => setAba(a)}
-            className={`rounded-t-md px-3 py-2 text-[12px] font-medium transition-colors ${
-              aba === a ? 'border-b-2 border-marca text-tinta' : 'text-tinta-fraca hover:text-tinta'
-            }`}
-          >
-            {a}
-          </button>
-        ))}
-      </div>
-
-      {aba === 'Identificação' && (
-        <div
-          className="grad-quadro grid grid-cols-2 gap-5 rounded-xl border p-5 sm:grid-cols-3"
-          style={{ '--cor-quadro': 'var(--marca)' } as React.CSSProperties}
-        >
-          <Campo rotulo="Categoria" valor={contrato.categoria} />
-          <Campo rotulo="Fornecedor / Contraparte" valor={contrato.fornecedorNome} />
-          <Campo rotulo="CNPJ / CPF" valor={contrato.fornecedorDocumento} />
-          <Campo rotulo="Contato" valor={contrato.fornecedorContato ?? '—'} />
-          <Campo rotulo="Empresa" valor={contrato.empresa} />
-          <Campo rotulo="Filial" valor={contrato.filial} />
-          <div className="col-span-full">
-            <Campo rotulo="Objeto do contrato" valor={contrato.objeto} />
-          </div>
-        </div>
-      )}
-
-      {aba === 'Vigência' && (
-        <div
-          className="grad-quadro grid grid-cols-2 gap-5 rounded-xl border p-5 sm:grid-cols-3"
-          style={{ '--cor-quadro': 'var(--status-renovado)' } as React.CSSProperties}
-        >
-          <Campo rotulo="Data de início" valor={formatarData(contrato.dataInicio)} />
-          <Campo rotulo="Data de término" valor={formatarData(contrato.dataFim)} />
-          <Campo rotulo="Dias até o vencimento" valor={av.diasVencimento} />
-          <Campo rotulo="Renovação automática" valor={contrato.renovacaoAutomatica ? 'Sim' : 'Não'} />
-          <Campo rotulo="Prazo para aviso de cancelamento" valor={`${contrato.prazoAvisoCancelamentoDias} dias antes`} />
-          <Campo
-            rotulo="Prazo-limite de decisão"
-            valor={
-              av.diasDecisao >= 0
-                ? `em ${av.diasDecisao} dia${av.diasDecisao === 1 ? '' : 's'}`
-                : `passou há ${Math.abs(av.diasDecisao)} dia${Math.abs(av.diasDecisao) === 1 ? '' : 's'}`
-            }
-          />
-        </div>
-      )}
-
-      {aba === 'Financeiro' && (
-        <div
-          className="grad-quadro grid grid-cols-2 gap-5 rounded-xl border p-5 sm:grid-cols-3"
-          style={{ '--cor-quadro': 'var(--marca)' } as React.CSSProperties}
-        >
-          <Campo rotulo="Valor mensal" valor={formatarMoeda(contrato.valorMensal)} />
-          <Campo rotulo="Valor anual" valor={formatarMoeda(contrato.valorMensal * 12)} />
-          <Campo rotulo="Forma de pagamento" valor={contrato.formaPagamento} />
-          <Campo rotulo="Centro de custo" valor={contrato.centroCusto} />
-          <Campo rotulo="Índice de reajuste" valor={contrato.indiceReajuste} />
-          <Campo rotulo="Próximo reajuste" valor={formatarData(reajuste)} />
-        </div>
-      )}
-
-      {aba === 'Responsabilidade' && (
-        <div
-          className="grad-quadro grid grid-cols-2 gap-5 rounded-xl border p-5 sm:grid-cols-3"
-          style={{ '--cor-quadro': 'var(--marca)' } as React.CSSProperties}
-        >
-          <Campo rotulo="Área responsável" valor={contrato.areaResponsavel} />
-          <Campo rotulo="Gestor do contrato" valor={contrato.gestor} />
-          <Campo rotulo="Responsável jurídico" valor={contrato.responsavelJuridico} />
-          <Campo rotulo="Acesso restrito" valor={contrato.acessoRestrito ? '🔒 Sim' : 'Não'} />
-        </div>
-      )}
-
-      {aba === 'Obrigações' && (
-        <div
-          className="grad-quadro overflow-hidden rounded-xl border"
-          style={{ '--cor-quadro': 'var(--status-atencao)' } as React.CSSProperties}
-        >
-          <table className="w-full text-left text-[12px]">
-            <thead>
-              <tr className="text-tinta-fraca">
-                <th className="px-4 py-2 font-medium">Descrição</th>
-                <th className="px-4 py-2 font-medium">Responsável</th>
-                <th className="px-4 py-2 font-medium">Data</th>
-                <th className="px-4 py-2 font-medium">Recorrência</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contrato.obrigacoes.map((o) => (
-                <tr key={o.id} className="border-t border-borda">
-                  <td className="px-4 py-2 text-tinta">{o.descricao}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{o.responsavel}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{formatarData(o.data)}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{o.recorrencia}</td>
-                  <td className="px-4 py-2">
-                    <span className={o.cumprida ? 'text-status-vigente' : 'text-status-atencao'}>
-                      {o.cumprida ? '✓ Cumprida' : '● Pendente'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {contrato.obrigacoes.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-tinta-fraca">
-                    Nenhuma obrigação cadastrada.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {aba === 'Documentos' && (
-        <div
-          className="grad-quadro overflow-hidden rounded-xl border"
-          style={{ '--cor-quadro': 'var(--marca)' } as React.CSSProperties}
-        >
-          <table className="w-full text-left text-[12px]">
-            <thead>
-              <tr className="text-tinta-fraca">
-                <th className="px-4 py-2 font-medium">Documento</th>
-                <th className="px-4 py-2 font-medium">Tipo</th>
-                <th className="px-4 py-2 font-medium">Versão</th>
-                <th className="px-4 py-2 font-medium">Enviado em</th>
-                <th className="px-4 py-2 font-medium">Por</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contrato.documentos.map((d) => (
-                <tr key={d.id} className="border-t border-borda">
-                  <td className="px-4 py-2 text-tinta">{d.nome}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{d.tipo}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">v{d.versao}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{formatarData(d.enviadoEm)}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{d.enviadoPor}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {aba === 'Histórico' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[12px] text-tinta-fraca">
-              Original, aditivos e renovações registrados neste contrato.
-            </p>
-            {!aditivoAberto && av.status !== 'encerrado' && (
+      {editando ? (
+        <EdicaoContrato contrato={contrato} aoTerminar={() => setEditando(false)} />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1 border-b border-borda">
+            {ABAS.map((a) => (
               <button
-                type="button"
-                onClick={abrirAditivo}
-                className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
+                key={a}
+                onClick={() => setAba(a)}
+                className={`rounded-t-md px-3 py-2 text-[12px] font-medium transition-colors ${
+                  aba === a ? 'border-b-2 border-marca text-tinta' : 'text-tinta-fraca hover:text-tinta'
+                }`}
               >
-                + Novo aditivo
+                {a}
               </button>
-            )}
+            ))}
           </div>
 
-          {aditivoAberto && (
-            <div
-              className="grad-quadro space-y-3 rounded-xl border p-4"
-              style={{ '--cor-quadro': 'var(--roxo)' } as React.CSSProperties}
-            >
-              <p className="text-[13px] font-semibold text-tinta">Vincular aditivo de contrato</p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <label className="block">
-                  <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Nova vigência — início</span>
-                  <input
-                    type="date"
-                    value={aditivo.dataInicio}
-                    onChange={(e) => setAditivo((a) => ({ ...a, dataInicio: e.target.value }))}
-                    className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta focus:border-marca/60 focus:outline-none"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Nova vigência — término</span>
-                  <input
-                    type="date"
-                    value={aditivo.dataFim}
-                    onChange={(e) => setAditivo((a) => ({ ...a, dataFim: e.target.value }))}
-                    className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta focus:border-marca/60 focus:outline-none"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Novo valor mensal (R$)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={aditivo.valorMensal}
-                    onChange={(e) => setAditivo((a) => ({ ...a, valorMensal: e.target.value }))}
-                    className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta focus:border-marca/60 focus:outline-none"
-                  />
-                </label>
+          {aba === 'Identificação' && (
+            <Quadro cor="--marca">
+              <Campo rotulo="Categoria" valor={nomeOpcao(contrato.categoria)} />
+              <Campo rotulo="Segmento" valor={nomeOpcao(contrato.segmento)} />
+              <Campo rotulo="Fornecedor / Contraparte" valor={contrato.fornecedorNome} />
+              <Campo rotulo="CNPJ / CPF" valor={contrato.fornecedorDocumento} />
+              <Campo rotulo="Contato" valor={contrato.fornecedorContato ?? '—'} />
+              <Campo rotulo="Empresa" valor={nomeOpcao(contrato.empresa)} />
+              <Campo rotulo="Filial" valor={nomeOpcao(contrato.filial)} />
+              <div className="col-span-full">
+                <Campo rotulo="Objeto do contrato" valor={contrato.objeto} />
               </div>
-              <label className="block">
-                <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Observação</span>
-                <input
-                  value={aditivo.observacao}
-                  onChange={(e) => setAditivo((a) => ({ ...a, observacao: e.target.value }))}
-                  placeholder="Ex.: Reajuste anual, prorrogação de prazo…"
-                  className="mt-1 w-full rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none"
-                />
-              </label>
-
-              <div>
-                <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Aditivo assinado (PDF ou Word)</span>
-                {arquivoAditivo ? (
-                  <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-borda bg-painel-2 px-3 py-2">
-                    <span className="truncate text-[13px] font-semibold text-tinta">
-                      {arquivoAditivo.name} <span className="font-normal text-tinta-fraca">· {formatarTamanho(arquivoAditivo.size)}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setArquivoAditivo(null)}
-                      className="shrink-0 text-[11px] text-status-vencido hover:underline"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                ) : (
-                  <label className="mt-1 flex cursor-pointer items-center gap-2 rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta-fraca hover:text-tinta">
-                    <span className="rounded-md border border-borda bg-painel px-2.5 py-1 text-[11px] font-semibold text-tinta">Escolher arquivo</span>
-                    <span>Nenhum arquivo selecionado (opcional)</span>
-                    <input
-                      type="file"
-                      accept={EXTENSOES_ACEITAS}
-                      onChange={(e) => {
-                        selecionarArquivoAditivo(e.target.files?.[0] ?? null)
-                        e.target.value = ''
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              {erroAditivo && <p className="text-[12px] text-status-vencido">{erroAditivo}</p>}
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAditivoAberto(false)}
-                  className="rounded-md border border-borda px-3 py-2 text-[12px] text-tinta-fraca hover:text-tinta"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={registrarAditivo}
-                  className="rounded-md bg-marca px-4 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
-                >
-                  Vincular aditivo
-                </button>
-              </div>
-            </div>
+              {contrato.observacoes && (
+                <div className="col-span-full">
+                  <Campo rotulo="Observações" valor={contrato.observacoes} />
+                </div>
+              )}
+            </Quadro>
           )}
 
-          {contrato.historico.map((h, i) => (
-            <div
-              key={h.id}
-              className="grad-quadro flex items-start gap-3 rounded-xl border p-4"
-              style={{ '--cor-quadro': 'var(--status-renovado)' } as React.CSSProperties}
-            >
-              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-marca" />
-              <div>
-                <p className="text-[13px] font-semibold text-tinta">
-                  {h.tipo} {i > 0 && `(${i})`}
-                </p>
-                <p className="text-[12px] text-tinta-fraca">
-                  {formatarData(h.dataInicio)} → {formatarData(h.dataFim)} · {formatarMoeda(h.valorMensal)}/mês
-                </p>
-                {h.observacao && <p className="mt-1 text-[12px] text-tinta-fraca">{h.observacao}</p>}
-              </div>
+          {aba === 'Vigência' && (
+            <Quadro cor="--status-renovado">
+              <Campo rotulo="Data de início" valor={formatarData(contrato.dataInicio)} />
+              <Campo rotulo="Data de término" valor={formatarData(contrato.dataFim)} />
+              <Campo rotulo="Dias até o vencimento" valor={av.diasVencimento} />
+              <Campo rotulo="Renovação automática" valor={contrato.renovacaoAutomatica ? 'Sim (o sistema só alerta; registre a renovação)' : 'Não'} />
+              <Campo rotulo="Prazo para aviso de cancelamento" valor={`${contrato.prazoAvisoCancelamentoDias} dias antes`} />
+              <Campo
+                rotulo="Prazo-limite de decisão"
+                valor={`${formatarData(contrato.dataLimiteAviso)} (${
+                  av.diasDecisao >= 0 ? `em ${av.diasDecisao} dia${av.diasDecisao === 1 ? '' : 's'}` : `passou há ${-av.diasDecisao} dia${av.diasDecisao === -1 ? '' : 's'}`
+                })`}
+              />
+            </Quadro>
+          )}
+
+          {aba === 'Financeiro' && (
+            <Quadro cor="--marca">
+              <Campo rotulo="Valor mensal" valor={formatarMoeda(contrato.valorMensal)} />
+              <Campo rotulo="Valor anual" valor={formatarMoeda(contrato.valorAnual)} />
+              <Campo rotulo="Forma de pagamento" valor={contrato.formaPagamento} />
+              <Campo rotulo="Centro de custo" valor={nomeOpcao(contrato.centroCusto)} />
+              <Campo rotulo="Índice de reajuste" valor={contrato.indiceReajuste} />
+              <Campo rotulo="Próximo reajuste" valor={formatarData(contrato.proximoReajuste)} />
+              <Campo rotulo="Multa de rescisão" valor={contrato.multaRescisao === null ? '—' : formatarMoeda(contrato.multaRescisao)} />
+            </Quadro>
+          )}
+
+          {aba === 'Responsabilidade' && (
+            <Quadro cor="--marca">
+              <Campo rotulo="Área responsável" valor={nomeOpcao(contrato.areaResponsavel)} />
+              <Campo rotulo="Gestor do contrato" valor={`${contrato.gestorNome} · ${contrato.gestorEmail}`} />
+              <Campo rotulo="Responsável jurídico" valor={`${contrato.responsavelJuridicoNome} · ${contrato.responsavelJuridicoEmail}`} />
+              <Campo rotulo="Acesso restrito" valor={contrato.acessoRestrito ? '🔒 Sim' : 'Não'} />
+              <Campo rotulo="Cadastrado por" valor={`${contrato.criadoPor.nome} em ${formatarDataHora(contrato.criadoEm)}`} />
+            </Quadro>
+          )}
+
+          {aba === 'Obrigações' && (
+            <Quadro cor="--status-atencao" grade={false}>
+              <p className="text-center text-[13px] text-tinta-fraca">O registro de obrigações deste contrato ainda não está disponível.</p>
+            </Quadro>
+          )}
+
+          {aba === 'Documentos' && <AbaDocumentos contrato={contrato} />}
+
+          {aba === 'Histórico' && <AbaHistorico contrato={contrato} />}
+
+          {aba === 'Auditoria' && (
+            <div className="grad-quadro overflow-hidden rounded-xl border" style={{ '--cor-quadro': 'var(--status-encerrado)' } as React.CSSProperties}>
+              <EstadoConsulta carregando={auditoria.isPending} erro={auditoria.error} tentarDeNovo={auditoria.refetch} />
+              {auditoria.data && (
+                <>
+                  <table className="w-full text-left text-[12px]">
+                    <thead>
+                      <tr className="text-tinta-fraca">
+                        <th className="px-4 py-2 font-medium">Quando</th>
+                        <th className="px-4 py-2 font-medium">Usuário</th>
+                        <th className="px-4 py-2 font-medium">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditoria.data.itens.map((e) => (
+                        <tr key={e.id} className="border-t border-borda align-top">
+                          <td className="whitespace-nowrap px-4 py-2 text-tinta-fraca">{formatarDataHora(e.ocorridoEm)}</td>
+                          <td className="px-4 py-2">{e.usuario ? <span className="text-tinta">{e.usuario.nome}</span> : <span className="italic text-tinta-fraca">Sistema</span>}</td>
+                          <td className="px-4 py-2 text-tinta-fraca">{e.descricao}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {auditoria.data.total > auditoria.data.porPagina && (
+                    <div className="flex items-center justify-end gap-2 border-t border-borda px-4 py-2 text-[12px] text-tinta-fraca">
+                      <button type="button" disabled={paginaAuditoria <= 1} onClick={() => setPaginaAuditoria((n) => n - 1)} className="disabled:opacity-40">
+                        ← Anterior
+                      </button>
+                      <span>
+                        {paginaAuditoria} / {Math.ceil(auditoria.data.total / auditoria.data.porPagina)}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={paginaAuditoria * auditoria.data.porPagina >= auditoria.data.total}
+                        onClick={() => setPaginaAuditoria((n) => n + 1)}
+                        className="disabled:opacity-40"
+                      >
+                        Próxima →
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
-      {aba === 'Auditoria' && (
-        <div
-          className="grad-quadro overflow-hidden rounded-xl border"
-          style={{ '--cor-quadro': 'var(--status-encerrado)' } as React.CSSProperties}
-        >
-          <table className="w-full text-left text-[12px]">
-            <thead>
-              <tr className="text-tinta-fraca">
-                <th className="px-4 py-2 font-medium">Data</th>
-                <th className="px-4 py-2 font-medium">Usuário</th>
-                <th className="px-4 py-2 font-medium">Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contrato.auditoria.map((e) => (
-                <tr key={e.id} className="border-t border-borda">
-                  <td className="px-4 py-2 text-tinta-fraca">{formatarData(e.data)}</td>
-                  <td className="px-4 py-2 text-tinta">{e.usuario}</td>
-                  <td className="px-4 py-2 text-tinta-fraca">{e.acao}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {modal === 'encerrar' && <ModalEncerrar contrato={contrato} aoFechar={() => setModal(null)} />}
+      {modal === 'reabrir' && <ModalReabrir contrato={contrato} aoFechar={() => setModal(null)} />}
+      {modal === 'renovar' && <ModalRenovar contrato={contrato} aoFechar={() => setModal(null)} />}
     </div>
   )
 }

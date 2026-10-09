@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
@@ -22,7 +24,12 @@ const ambienteFicticio = {
   LOG_LEVEL: 'silent',
 }
 
+/** Pasta descartavel dos arquivos enviados nos testes (zerada pelo globalSetup). */
+const ARMAZENAMENTO_TESTE = join(tmpdir(), 'princelegal-arquivos-teste')
+
 const bancoDeTeste = {
+  ARMAZENAMENTO_DIR: ARMAZENAMENTO_TESTE,
+  UPLOAD_MAX_MB: '2',
   POSTGRES_HOST: process.env.POSTGRES_TEST_HOST ?? 'localhost',
   POSTGRES_PORT: process.env.POSTGRES_TEST_PORT ?? '54329',
   POSTGRES_DATABASE: process.env.POSTGRES_TEST_DATABASE ?? 'princelegal_teste',

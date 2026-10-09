@@ -14,7 +14,7 @@ import { registrarAuditoria, type ContextoAuditoria } from '../auditoria'
 import { ehAdmin, exigirAdmin } from '../auth'
 import { db, type Executor } from '../db/cliente'
 import { ehViolacaoUnica } from '../db/erros'
-import { opcoesCadastro } from '../db/esquema'
+import { contratos, opcoesCadastro } from '../db/esquema'
 import { erroConflito, erroNaoEncontrado, erroRegraNegocio } from '../http/erros'
 
 /**
@@ -83,10 +83,27 @@ export async function listarOpcoes(
     )
     .orderBy(asc(opcoesCadastro.ordem), sql`lower(f_unaccent(${opcoesCadastro.valor}))`)
 
+  // Para quem administra: quantos contratos usam cada opcao (ajuda a decidir
+  // entre renomear -- vale para todos -- e desativar).
+  const usos = ehAdmin(usuario) ? await contarUsos() : null
+
   const campos = filtro.campo ? [filtro.campo] : CAMPOS_OPCAO
   const resultado: Partial<OpcoesPorCampo> = Object.fromEntries(campos.map((c) => [c, [] as Opcao[]]))
-  for (const l of linhas) resultado[l.campo]!.push(paraOpcao(l))
+  for (const l of linhas) resultado[l.campo]!.push(usos ? { ...paraOpcao(l), emUso: usos.get(l.id) ?? 0 } : paraOpcao(l))
   return resultado
+}
+
+async function contarUsos(): Promise<Map<string, number>> {
+  const linhas = await db.execute<{ id: string; n: number }>(sql`
+    select id, count(*)::int as n from (
+      select ${contratos.categoriaId} as id from ${contratos}
+      union all select ${contratos.segmentoId} from ${contratos}
+      union all select ${contratos.empresaId} from ${contratos}
+      union all select ${contratos.filialId} from ${contratos}
+      union all select ${contratos.areaResponsavelId} from ${contratos}
+      union all select ${contratos.centroCustoId} from ${contratos}
+    ) usos group by id`)
+  return new Map(linhas.map((l) => [l.id, l.n]))
 }
 
 export async function criarOpcao(usuario: UsuarioSessao, entrada: DadosCriarOpcao, contexto: ContextoAuditoria): Promise<Opcao> {

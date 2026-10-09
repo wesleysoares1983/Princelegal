@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
@@ -32,6 +33,9 @@ export default async function preparar(projeto: TestProject) {
         'Os testes de banco apagam o esquema inteiro antes de rodar.',
     )
   }
+
+  // Arquivos dos testes de documento: pasta descartavel, zerada a cada execucao.
+  if (env.ARMAZENAMENTO_DIR) await rm(env.ARMAZENAMENTO_DIR, { recursive: true, force: true })
 
   let parar: (() => Promise<void>) | null = null
   if (!(await alcancavel(conexao))) {

@@ -26,6 +26,8 @@ export interface Opcao {
   ativo: boolean
   ordem: number
   versao: number
+  /** Quantos contratos usam a opcao -- so nas respostas para administrador. */
+  emUso?: number
 }
 
 /** GET /api/v1/opcoes-cadastro: todos os campos, mesmo os sem opcao. */

@@ -24,10 +24,12 @@ type Metodo = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 export async function chamarApi<T>(metodo: Metodo, caminho: string, corpo?: unknown): Promise<T> {
   let resposta: Response
   try {
+    // FormData (upload) vai como esta: o navegador monta o multipart e o boundary.
+    const formulario = corpo instanceof FormData
     resposta = await fetch(`/api/v1${caminho}`, {
       method: metodo,
-      headers: corpo === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+      headers: corpo === undefined || formulario ? undefined : { 'Content-Type': 'application/json' },
+      body: corpo === undefined ? undefined : formulario ? corpo : JSON.stringify(corpo),
       cache: 'no-store',
     })
   } catch {

@@ -80,9 +80,32 @@ export const configBanco = memorizar((): ConfigBanco => {
   }
 })
 
+const emProducao = () => process.env.NODE_ENV === 'production'
+
+const esquemaArmazenamento = z.object({
+  // Em producao e obrigatorio (o volume do Docker); fora dela, uma pasta local ignorada pelo git.
+  ARMAZENAMENTO_DIR: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !emProducao() || !!v, 'defina ARMAZENAMENTO_DIR (pasta dos arquivos enviados; o volume do Docker em produção)'),
+  UPLOAD_MAX_MB: z.coerce.number({ error: 'UPLOAD_MAX_MB deve ser um número' }).positive().max(200).default(25),
+})
+
+export interface ConfigArmazenamento {
+  /** Pasta raiz dos arquivos (absoluta ou relativa ao diretorio do processo). */
+  diretorio: string
+  maxBytes: number
+}
+
+export const configArmazenamento = memorizar((): ConfigArmazenamento => {
+  const e = ler(esquemaArmazenamento)
+  return { diretorio: e.ARMAZENAMENTO_DIR || '.dados/arquivos', maxBytes: e.UPLOAD_MAX_MB * 1024 * 1024 }
+})
+
 /** Confere todas as variaveis de uma vez; lanca com a lista completa do que esta errado. */
 export function validarAmbiente() {
-  const resultado = esquemaAppsPrincesa.and(esquemaSessao).and(esquemaBanco).safeParse(process.env)
+  const resultado = esquemaAppsPrincesa.and(esquemaSessao).and(esquemaBanco).and(esquemaArmazenamento).safeParse(process.env)
   if (!resultado.success) {
     const problemas = resultado.error.issues.map((i) => `  - ${i.message}`).join('\n')
     throw new Error(`Configuração inválida no .env:\n${problemas}`)

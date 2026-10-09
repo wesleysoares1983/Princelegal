@@ -22,6 +22,27 @@
       "when": 1791398649510,
       "tag": "0002_auditoria_imutavel_e_opcoes_iniciais",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791554393022,
+      "tag": "0003_contratos",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791554404998,
+      "tag": "0004_contratos_busca",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791556427412,
+      "tag": "0005_documentos",
+      "breakpoints": true
     }
   ]
 }
