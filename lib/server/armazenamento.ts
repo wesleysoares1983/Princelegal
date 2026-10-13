@@ -39,6 +39,24 @@ export function novaChave(contratoId: string): string {
   return `contratos/${contratoId}/${randomUUID()}`
 }
 
+/**
+ * Confere, na subida do app e do worker, que a pasta existe e aceita escrita.
+ * Em producao e um volume montado: dono errado (o container roda como o
+ * usuario 1001) apareceria so no primeiro upload; assim o processo nem sobe.
+ */
+export async function verificarPastaGravavel(): Promise<void> {
+  const pasta = join(raiz(), PASTA_TEMP)
+  const teste = join(pasta, `.teste-escrita-${randomUUID()}`)
+  try {
+    await mkdir(pasta, { recursive: true })
+    await writeFile(teste, '')
+    await rm(teste, { force: true })
+  } catch (erro) {
+    const motivo = erro instanceof Error ? erro.message : String(erro)
+    throw new Error(`ARMAZENAMENTO_DIR sem permissão de escrita (${raiz()}): ${motivo}. No Docker, o dono da pasta montada deve ser o uid 1001.`)
+  }
+}
+
 /** Escreve os bytes num arquivo temporario; devolve o caminho dele. */
 export async function gravarTemporario(bytes: Uint8Array): Promise<string> {
   const pasta = join(raiz(), PASTA_TEMP)

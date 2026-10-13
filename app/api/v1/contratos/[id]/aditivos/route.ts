@@ -11,7 +11,7 @@ import { esquemaAditivo } from '@/lib/shared/contratos'
  */
 export const POST = rota(async ({ usuario, auditoria }, req, ctx: RouteContext<'/api/v1/contratos/[id]/aditivos'>) => {
   const id = idDaUrl((await ctx.params).id)
-  const { corpo, arquivo } = await lerCorpoComArquivo(req)
+  const { corpo, arquivo } = await lerCorpoComArquivo(req, usuario.matricula)
   const contrato = await registrarAditivo(usuario, id, esquemaAditivo.parse(corpo), auditoria, undefined, arquivo)
   return respostaCriada(contrato, `/api/v1/contratos/${contrato.id}`)
 })

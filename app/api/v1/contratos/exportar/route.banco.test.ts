@@ -118,7 +118,18 @@ describe('GET /api/v1/contratos/exportar', () => {
       .limit(1)
     expect(ev.categoria).toBe('exportacao')
     expect(ev.descricao).toBe('Exportou 1 contrato (CSV)')
-    expect(ev.dados).toMatchObject({ formato: 'csv', linhas: 1, filtros: { busca: MARCA, status: 'ativos', ordenar: 'vencimento' } })
+    expect(ev.dados).toMatchObject({ formato: 'csv', linhas: 1, filtros: { busca: MARCA, status: 'ativos', ordenar: 'vencimento' }, restritos: [] })
+  })
+
+  it('auditoria lista os restritos que saíram na planilha (trilha LGPD)', async () => {
+    await get(EXPORTAR_CONTRATOS, `/contratos/exportar?formato=csv&busca=${MARCA}`)
+    const [ev] = await db
+      .select()
+      .from(auditoria)
+      .where(and(eq(auditoria.acao, 'exportacao.contratos'), eq(auditoria.usuarioMatricula, 'EA')))
+      .orderBy(desc(auditoria.ocorridoEm))
+      .limit(1)
+    expect(ev.dados).toMatchObject({ linhas: 2, restritos: [restrito.codigo] })
   })
 
   it('formato inválido -> 400; sem sessão -> 401', async () => {

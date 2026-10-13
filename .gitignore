@@ -8,3 +8,5 @@ docs/
 .env
 .dados/
 dist/
+# Pasta dos documentos no servidor de producao (docker-compose.yml)
+dados/

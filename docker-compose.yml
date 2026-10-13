@@ -1,0 +1,50 @@
+# Produção: app + worker + migrações (docs/BACKEND_IMPLEMENTATION.md §12; passo a passo em DEPLOY.md).
+# - Imagem construída neste servidor: `docker compose up -d --build`.
+# - Os documentos ficam em ARQUIVOS_DIR (pasta do host, dono uid 1001), que
+#   o backup da TI copia; o banco é do backup do DBA.
+
+name: contratos-juridicos
+
+x-comum: &comum
+  image: contratos-juridicos:${TAG:-latest}
+  env_file: .env
+  # Caminhos DENTRO do container: valem mesmo se o .env tiver os de desenvolvimento.
+  environment:
+    NODE_ENV: production
+    ARMAZENAMENTO_DIR: /data/arquivos
+    EMAIL_ARQUIVOS_DIR: /data/emails
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  migrate:
+    <<: *comum
+    command: [ "node", "dist/migrar.cjs" ]
+    restart: "no"
+    healthcheck: { disable: true }
+
+  app:
+    <<: *comum
+    build:
+      context: .
+      args:
+        UPLOAD_MAX_MB: ${UPLOAD_MAX_MB:-25}
+        NODE_IMAGE: ${NODE_IMAGE:-node:24-alpine}
+    ports:
+      - "${APP_PORTA:-3400}:3400"
+    volumes:
+      - ${ARQUIVOS_DIR:-./dados/arquivos}:/data/arquivos
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *comum
+    command: [ "node", "dist/worker.cjs" ]
+    volumes:
+      - ${ARQUIVOS_DIR:-./dados/arquivos}:/data/arquivos
+    healthcheck: { disable: true }
+    stop_grace_period: 30s
+    depends_on:
+      migrate: { condition: service_completed_successfully }

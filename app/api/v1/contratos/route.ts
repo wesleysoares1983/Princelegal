@@ -16,7 +16,7 @@ export const GET = rota(async ({ usuario }, req) => {
 })
 
 export const POST = rota(async ({ usuario, auditoria }, req) => {
-  const { corpo, arquivo } = await lerCorpoComArquivo(req)
+  const { corpo, arquivo } = await lerCorpoComArquivo(req, usuario.matricula)
   const contrato = await criarContrato(usuario, esquemaCriarContrato.parse(corpo), auditoria, undefined, arquivo)
   return respostaCriada(contrato, `/api/v1/contratos/${contrato.id}`)
 })

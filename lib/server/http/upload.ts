@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import type { NextRequest } from 'next/server'
 import { configArmazenamento } from '../config'
 import { ErroApi, erroValidacao } from './erros'
+import { limiteUpload } from './limiteUpload'
 
 /**
  * Upload de documentos: ler o multipart e validar o arquivo
@@ -98,9 +99,14 @@ export function validarArquivo(arquivo: { name: string; bytes: Uint8Array }, max
 
 /**
  * Le um multipart/form-data: campos de texto + o arquivo do campo `arquivo`.
- * Recusa cedo (pelo Content-Length) o que passa muito do limite, sem ler o corpo.
+ * Recusa cedo (pelo Content-Length) o que passa muito do limite, sem ler o
+ * corpo -- e quem ja enviou demais na ultima hora (429, `limiteUpload`).
+ * `quem` = matricula de quem envia.
  */
-export async function lerMultipart(req: NextRequest): Promise<{ campos: Record<string, string>; arquivo: { name: string; bytes: Uint8Array } | null }> {
+export async function lerMultipart(
+  req: NextRequest,
+  quem: string,
+): Promise<{ campos: Record<string, string>; arquivo: { name: string; bytes: Uint8Array } | null }> {
   const { maxBytes } = configArmazenamento()
   const tamanho = Number(req.headers.get('content-length'))
   if (tamanho > maxBytes + 1024 * 1024) {
@@ -109,6 +115,7 @@ export async function lerMultipart(req: NextRequest): Promise<{ campos: Record<s
   if (!req.headers.get('content-type')?.includes('multipart/form-data')) {
     throw erroValidacao({}, 'Envie o arquivo como multipart/form-data.')
   }
+  limiteUpload.consumir(quem, tamanho || 0)
 
   const form = await req.formData()
   const campos: Record<string, string> = {}
@@ -125,9 +132,9 @@ export async function lerMultipart(req: NextRequest): Promise<{ campos: Record<s
  * como texto) + `arquivo`. Usado no cadastro, no aditivo e na renovacao, que
  * aceitam o documento assinado no mesmo pedido.
  */
-export async function lerCorpoComArquivo(req: NextRequest): Promise<{ corpo: unknown; arquivo?: ArquivoValidado }> {
+export async function lerCorpoComArquivo(req: NextRequest, quem: string): Promise<{ corpo: unknown; arquivo?: ArquivoValidado }> {
   if (!req.headers.get('content-type')?.includes('multipart/form-data')) return { corpo: await req.json() }
-  const { campos, arquivo } = await lerMultipart(req)
+  const { campos, arquivo } = await lerMultipart(req, quem)
   let corpo: unknown
   try {
     corpo = JSON.parse(campos.dados ?? '')

@@ -1,0 +1,18 @@
+# Nada de segredo nem de dado local entra no contexto do build.
+.env
+.env.*
+!.env.example
+.dados/
+dados/
+backups/
+
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+.git/
+.github/
+docs/
+*.png

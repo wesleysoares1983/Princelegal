@@ -4,6 +4,8 @@
  * ele -- o resto e cortado em silencio (so um aviso no log). O limite abaixo
  * fica acima do maior upload aceito (+5 MB de folga para o envelope multipart);
  * quem recusa o arquivo grande demais e a rota, com 413.
+ *
+ * Lido no BUILD (na imagem Docker: build arg UPLOAD_MAX_MB, ver Dockerfile).
  */
 const UPLOAD_MAX_MB = Number(process.env.UPLOAD_MAX_MB) || 25
 
@@ -11,6 +13,8 @@ const UPLOAD_MAX_MB = Number(process.env.UPLOAD_MAX_MB) || 25
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Imagem Docker enxuta: .next/standalone traz o server.js e so as dependencias usadas.
+  output: 'standalone',
 
   experimental: {
     proxyClientMaxBodySize: `${UPLOAD_MAX_MB + 5}mb`,

@@ -1,6 +1,9 @@
 /**
- * Empacota o worker (worker/index.ts) num arquivo só: dist/worker.cjs.
- * O mesmo arquivo roda em desenvolvimento e na imagem Docker.
+ * Empacota os processos fora do Next em arquivos únicos em dist/:
+ * - dist/worker.cjs  (worker/index.ts): alertas e limpeza agendados;
+ * - dist/migrar.cjs  (worker/migrar.ts): aplica as migrações e sai;
+ * - dist/semear.cjs  (worker/semear.ts): dados fictícios (só desenvolvimento).
+ * Os mesmos arquivos rodam em desenvolvimento e na imagem Docker.
  *
  * - `@/...` aponta para a raiz do projeto (igual ao tsconfig);
  * - `server-only` vira um módulo vazio (ele só faz sentido dentro do Next);
@@ -12,8 +15,9 @@ import { fileURLToPath } from 'node:url'
 const raiz = fileURLToPath(new URL('..', import.meta.url))
 
 await build({
-  entryPoints: [`${raiz}/worker/index.ts`],
-  outfile: `${raiz}/dist/worker.cjs`,
+  entryPoints: { worker: `${raiz}/worker/index.ts`, migrar: `${raiz}/worker/migrar.ts`, semear: `${raiz}/worker/semear.ts` },
+  outdir: `${raiz}/dist`,
+  outExtension: { '.js': '.cjs' },
   bundle: true,
   platform: 'node',
   target: 'node24',
@@ -26,4 +30,4 @@ await build({
   define: { 'import.meta.url': '__import_meta_url' },
   logLevel: 'warning',
 })
-console.log('dist/worker.cjs pronto')
+console.log('dist/worker.cjs, dist/migrar.cjs e dist/semear.cjs prontos')

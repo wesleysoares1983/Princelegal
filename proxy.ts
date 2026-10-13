@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { gerarNonce, politicaCsp } from '@/lib/server/csp'
 import {
   assinarSessao,
   COOKIE_SESSAO,
@@ -20,6 +21,8 @@ import { revalidarSessao } from '@/lib/server/usuariosApp'
  * tem acesso ao app, em cache -- ver lib/server/usuariosApp): usuario
  * desativado ou sem acesso e deslogado; cargo/nome alterados entram na
  * sessao na hora, mantendo o prazo original dela.
+ *
+ * Paginas tambem recebem aqui a Content-Security-Policy com nonce (lib/server/csp).
  */
 
 /** Rotas que precisam funcionar sem sessao. /api/health: healthcheck do Docker. */
@@ -57,14 +60,29 @@ function semSessao(req: NextRequest, motivo?: 'acesso_revogado') {
   return res
 }
 
+/**
+ * Segue para a pagina/rota. Em paginas (fora de /api), o nonce vai no
+ * cabecalho CSP da requisicao (o Next le dali para marcar os proprios
+ * scripts) e da resposta (o navegador aplica).
+ */
+function seguir(req: NextRequest, headers?: Headers) {
+  if (req.nextUrl.pathname.startsWith('/api/')) return headers ? NextResponse.next({ request: { headers } }) : NextResponse.next()
+  const csp = politicaCsp(gerarNonce())
+  const h = headers ?? new Headers(req.headers)
+  h.set('content-security-policy', csp)
+  const res = NextResponse.next({ request: { headers: h } })
+  res.headers.set('Content-Security-Policy', csp)
+  return res
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (PUBLICAS.has(pathname)) return NextResponse.next()
+  if (PUBLICAS.has(pathname)) return seguir(req)
 
   const token = lerTokenSessao(req.cookies.get(COOKIE_SESSAO)?.value)
 
   if (pathname === '/login') {
-    return token ? NextResponse.redirect(new URL('/', req.url)) : NextResponse.next()
+    return token ? NextResponse.redirect(new URL('/', req.url)) : seguir(req)
   }
   if (!token) return semSessao(req)
 
@@ -76,7 +94,7 @@ export async function proxy(req: NextRequest) {
     if (pathname.startsWith('/configuracoes') && token.u.nivel !== 'admin') {
       return NextResponse.redirect(new URL('/', req.url))
     }
-    return NextResponse.next()
+    return seguir(req)
   }
 
   // Dados mudaram no cadastro central: cookie novo (mesmo prazo) na resposta
@@ -91,7 +109,7 @@ export async function proxy(req: NextRequest) {
     req.cookies.set(COOKIE_SESSAO, valor)
     const headers = new Headers(req.headers)
     headers.set('cookie', req.cookies.toString())
-    res = NextResponse.next({ request: { headers } })
+    res = seguir(req, headers)
   }
   definirCookieSessao(res, valor, novoToken, ehHttps(req))
   return res

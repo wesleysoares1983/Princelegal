@@ -12,7 +12,7 @@ import { esquemaRenovar, type DadosRenovar } from '@/lib/shared/contratos'
  */
 export const POST = rota(async ({ usuario, auditoria }, req, ctx: RouteContext<'/api/v1/contratos/[id]/renovar'>) => {
   const id = idDaUrl((await ctx.params).id)
-  const { corpo, arquivo } = await lerCorpoComArquivo(req)
+  const { corpo, arquivo } = await lerCorpoComArquivo(req, usuario.matricula)
   const novo = await renovarContrato(usuario, id, esquemaRenovar.parse(corpo) as DadosRenovar, auditoria, undefined, arquivo)
   return respostaCriada(novo, `/api/v1/contratos/${novo.id}`)
 })

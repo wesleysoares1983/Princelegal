@@ -11,8 +11,9 @@
     "test": "vitest run --project unidade",
     "test:banco": "vitest run --project banco",
     "test:tudo": "vitest run",
-    "db:gerar": "drizzle-kit generate",
-    "db:migrar": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "npm run worker:build && node dist/semear.cjs",
     "db:teste:subir": "node testes/docker.mjs subir",
     "db:teste:parar": "node testes/docker.mjs parar",
     "worker:build": "node scripts/build-worker.mjs",
@@ -24,7 +25,7 @@
     "@tanstack/react-query": "^5.104.1",
     "drizzle-orm": "^0.45.3",
     "exceljs": "^4.4.0",
-    "next": "16.3.4",
+    "next": "16.3.8",
     "node-cron": "^4.6.0",
     "nodemailer": "^10.0.16",
     "pino": "^10.4.0",
@@ -46,5 +47,10 @@
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0",
     "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
   }
 }

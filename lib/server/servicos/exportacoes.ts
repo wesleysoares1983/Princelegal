@@ -79,7 +79,8 @@ export async function exportarContratos(
       categoria: 'exportacao',
       acao: 'exportacao.contratos',
       descricao: `Exportou ${plural(linhas.length, 'contrato', 'contratos')} (${f.formato.toUpperCase()})`,
-      dados: { formato: f.formato, linhas: linhas.length, filtros: filtrosUsados(f) },
+      // Trilha LGPD: quais restritos saíram na planilha (o detalhe já registra quem os abriu).
+      dados: { formato: f.formato, linhas: linhas.length, filtros: filtrosUsados(f), restritos: linhas.filter((l) => l.c.acessoRestrito).map((l) => l.c.codigo) },
     },
     contexto,
   )

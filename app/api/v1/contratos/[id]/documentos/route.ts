@@ -23,7 +23,7 @@ export const GET = rota(async ({ usuario }, req, ctx: Ctx) => {
 /** POST /api/v1/contratos/{id}/documentos  multipart: arquivo, tipo, nome? */
 export const POST = rota(async ({ usuario, auditoria }, req, ctx: Ctx) => {
   const id = idDaUrl((await ctx.params).id)
-  const { campos, arquivo } = await lerMultipart(req)
+  const { campos, arquivo } = await lerMultipart(req, usuario.matricula)
   const tipo = esquemaTipoDocumento.parse(campos.tipo)
   const nome = esquemaNomeDocumento.parse(campos.nome)
   if (!arquivo) throw erroValidacao({ arquivo: 'Escolha o arquivo.' })

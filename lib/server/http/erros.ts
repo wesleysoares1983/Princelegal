@@ -15,6 +15,7 @@ export type CodigoErro =
   | 'ARQUIVO_GRANDE'
   | 'TIPO_NAO_SUPORTADO'
   | 'REGRA_NEGOCIO'
+  | 'LIMITE_EXCEDIDO'
   | 'ERRO_INTERNO'
 
 const STATUS: Record<CodigoErro, number> = {
@@ -27,6 +28,7 @@ const STATUS: Record<CodigoErro, number> = {
   ARQUIVO_GRANDE: 413,
   TIPO_NAO_SUPORTADO: 415,
   REGRA_NEGOCIO: 422,
+  LIMITE_EXCEDIDO: 429,
   ERRO_INTERNO: 500,
 }
 

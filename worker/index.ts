@@ -17,6 +17,7 @@
 import { existsSync } from 'node:fs'
 import cron from 'node-cron'
 import { configAlertas, configArmazenamento, configBanco, configEmail } from '@/lib/server/config'
+import { verificarPastaGravavel } from '@/lib/server/armazenamento'
 import { fecharBanco } from '@/lib/server/db/cliente'
 import { enviarEmail, verificarSmtp } from '@/lib/server/email'
 import { log } from '@/lib/server/log'
@@ -55,6 +56,7 @@ async function rodarLimpeza() {
 
 async function main() {
   const [comando, opcao] = process.argv.slice(2)
+  if (!comando || comando === 'limpar') await verificarPastaGravavel()
 
   if (comando === 'alertas') {
     const r = await rodarAlertas(opcao === '--simular')

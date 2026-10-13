@@ -9,4 +9,6 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
   const { validarAmbiente } = await import('./lib/server/config')
   validarAmbiente()
+  const { verificarPastaGravavel } = await import('./lib/server/armazenamento')
+  await verificarPastaGravavel()
 }
