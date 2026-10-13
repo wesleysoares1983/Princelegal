@@ -40,7 +40,14 @@ ENV NODE_ENV=production \
     TZ=America/Sao_Paulo \
     ARMAZENAMENTO_DIR=/data/arquivos \
     EMAIL_ARQUIVOS_DIR=/data/emails
-RUN apk add --no-cache tzdata \
+# npm, npx, corepack e yarn vêm na imagem base mas não são usados em execução
+# (só `node`): saem, junto com as dependências deles, que o Trivy acusava
+# (tar, undici, ip-address, brace-expansion do npm embutido). O build usa npm
+# no estágio anterior, que não entra na imagem final.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-* \
+ && apk add --no-cache tzdata \
  && addgroup -S -g 1001 app && adduser -S -u 1001 -G app app \
  && mkdir -p /data/arquivos /data/emails && chown app:app /data/arquivos /data/emails
 
