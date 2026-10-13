@@ -46,6 +46,11 @@ export function useContratos(f: FiltroLista) {
   })
 }
 
+/** Endpoint de exportação com os filtros da lista (sem página; o botão acrescenta o formato). */
+export function caminhoExportarContratos({ pagina: _p, porPagina: _pp, ...f }: FiltroLista) {
+  return comQuery('/contratos/exportar', { ...f })
+}
+
 export function useContrato(id: string) {
   return useQuery({
     queryKey: ['contratos', 'detalhe', id],

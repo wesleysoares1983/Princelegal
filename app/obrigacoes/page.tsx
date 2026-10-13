@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { EstadoConsulta } from '@/components/EstadoConsulta'
 import { LinhaObrigacao } from '@/components/LinhaObrigacao'
-import { useObrigacoes } from '@/lib/api/obrigacoes'
+import { BotaoExportar } from '@/components/BotaoExportar'
+import { caminhoExportarObrigacoes, useObrigacoes } from '@/lib/api/obrigacoes'
 import type { SituacaoObrigacao } from '@/lib/shared/obrigacoes'
 
 /**
@@ -42,15 +43,15 @@ export default function Obrigacoes() {
     return () => clearTimeout(t)
   }, [busca])
 
-  const { data, isPending, error, refetch, isFetching } = useObrigacoes({
+  const filtroLista = {
     busca: buscaAplicada || undefined,
     responsavel: responsavel || undefined,
     vigenciaDe: vigenciaDe || undefined,
     vigenciaAte: vigenciaAte || undefined,
     situacao,
     atrasadas,
-    pagina,
-  })
+  }
+  const { data, isPending, error, refetch, isFetching } = useObrigacoes({ ...filtroLista, pagina })
   const totalPaginas = data ? Math.max(1, Math.ceil(data.total / data.porPagina)) : 1
   const filtrosAtivos = buscaAplicada || responsavel || vigenciaDe || vigenciaAte || atrasadas || situacao !== 'pendente'
   const mudar = <T,>(set: (v: T) => void) => (v: T) => {
@@ -71,9 +72,12 @@ export default function Obrigacoes() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-6">
-      <div>
-        <h1 className="text-lg font-semibold text-tinta">Obrigações</h1>
-        <p className="text-[13px] text-tinta-fraca">Pagamentos, seguros, avisos e demais compromissos dos contratos, por vencimento.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-tinta">Obrigações</h1>
+          <p className="text-[13px] text-tinta-fraca">Pagamentos, seguros, avisos e demais compromissos dos contratos, por vencimento.</p>
+        </div>
+        {data && data.total > 0 && <BotaoExportar caminho={caminhoExportarObrigacoes(filtroLista)} />}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -32,6 +32,11 @@ export function useObrigacoes(f: FiltroObrigacoesTela) {
   })
 }
 
+/** Endpoint de exportação com os filtros da lista (sem página; o botão acrescenta o formato). */
+export function caminhoExportarObrigacoes({ pagina: _p, ...f }: FiltroObrigacoesTela) {
+  return comQuery('/obrigacoes/exportar', { ...f })
+}
+
 export function useObrigacoesDoContrato(contratoId: string) {
   return useQuery({
     queryKey: ['obrigacoes', 'contrato', contratoId],

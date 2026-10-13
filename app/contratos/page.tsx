@@ -5,7 +5,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { EstadoConsulta } from '@/components/EstadoConsulta'
 import { SeloStatus } from '@/components/SeloStatus'
-import { useContratos } from '@/lib/api/contratos'
+import { BotaoExportar } from '@/components/BotaoExportar'
+import { caminhoExportarContratos, useContratos } from '@/lib/api/contratos'
 import { FILTROS_STATUS, type FiltroStatus } from '@/lib/shared/contratos'
 import { formatarData, formatarMoeda } from '@/lib/shared/status'
 
@@ -68,13 +69,12 @@ function ConteudoListaContratos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca])
 
-  const { data, isPending, error, refetch, isFetching } = useContratos({
+  const filtroLista = {
     status: filtro,
-    renovacaoAutomatica: somenteRenovacao ? 'sim' : undefined,
+    renovacaoAutomatica: somenteRenovacao ? ('sim' as const) : undefined,
     busca: buscaUrl || undefined,
-    pagina,
-    porPagina: POR_PAGINA,
-  })
+  }
+  const { data, isPending, error, refetch, isFetching } = useContratos({ ...filtroLista, pagina, porPagina: POR_PAGINA })
 
   const totalPaginas = data ? Math.max(1, Math.ceil(data.total / POR_PAGINA)) : 1
 
@@ -87,9 +87,12 @@ function ConteudoListaContratos() {
             {data ? `${data.total} contrato${data.total === 1 ? '' : 's'}${filtro !== 'todos' || buscaUrl || somenteRenovacao ? ' com estes filtros' : ' cadastrados'}.` : ' '}
           </p>
         </div>
-        <Link href="/contratos/novo" className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90">
-          + Novo contrato
-        </Link>
+        <div className="flex items-center gap-3">
+          {data && data.total > 0 && <BotaoExportar caminho={caminhoExportarContratos(filtroLista)} />}
+          <Link href="/contratos/novo" className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90">
+            + Novo contrato
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

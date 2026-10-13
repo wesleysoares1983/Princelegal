@@ -197,6 +197,47 @@ export async function listarContratos(
   return { itens: linhas.map((l) => paraResumo(l, hoje)), total, pagina: f.pagina, porPagina: f.porPagina }
 }
 
+// ---------------------------------------------------------------- leitura: exportacao
+
+const segmento = aliasedTable(opcoesCadastro, 'segmento')
+const empresa = aliasedTable(opcoesCadastro, 'empresa')
+const filial = aliasedTable(opcoesCadastro, 'filial')
+const centroCusto = aliasedTable(opcoesCadastro, 'centro_custo')
+
+export interface LinhaExportacaoContrato extends LinhaResumo {
+  segmento: string
+  empresa: string
+  filial: string
+  centroCusto: string
+}
+
+/**
+ * Todas as linhas que a lista mostraria (mesmos filtros, visibilidade e
+ * ordem), sem paginar. Busca `limite + 1` para quem chama saber se passou.
+ */
+export async function linhasParaExportar(
+  usuario: UsuarioSessao,
+  f: Omit<FiltroContratos, 'pagina' | 'porPagina'>,
+  limite: number,
+  hoje: string = hojeSP(),
+): Promise<LinhaExportacaoContrato[]> {
+  return db
+    .select({ ...colunasResumo, segmento: segmento.valor, empresa: empresa.valor, filial: filial.valor, centroCusto: centroCusto.valor })
+    .from(contratos)
+    .innerJoin(categoria, eq(categoria.id, contratos.categoriaId))
+    .innerJoin(area, eq(area.id, contratos.areaResponsavelId))
+    .innerJoin(segmento, eq(segmento.id, contratos.segmentoId))
+    .innerJoin(empresa, eq(empresa.id, contratos.empresaId))
+    .innerJoin(filial, eq(filial.id, contratos.filialId))
+    .innerJoin(centroCusto, eq(centroCusto.id, contratos.centroCustoId))
+    .leftJoin(sucessor, eq(sucessor.id, contratos.renovadoPorContratoId))
+    .where(and(...filtrosContratos(usuario, f, hoje)))
+    .orderBy(...ORDENACAO[f.ordenar])
+    .limit(limite + 1)
+}
+
+export { avaliacaoDe }
+
 // ---------------------------------------------------------------- leitura: detalhe
 
 /** Le o contrato (opcionalmente travando a linha) e aplica a visibilidade: 404 se nao pode ver. */

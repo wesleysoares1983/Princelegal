@@ -82,20 +82,7 @@ export async function listarObrigacoes(
   hoje: string = hojeSP(),
 ): Promise<Paginado<Obrigacao> & { facetas: { responsaveis: string[] } }> {
   const visivel = sqlVisivel(usuario)
-  const filtros: SQL[] = [visivel]
-  if (f.situacao !== 'todas') filtros.push(eq(obrigacoes.situacao, f.situacao))
-  if (f.atrasadas) filtros.push(eq(obrigacoes.situacao, 'pendente'), lt(obrigacoes.data, hoje))
-  if (f.responsavel) filtros.push(eq(obrigacoes.responsavel, f.responsavel))
-  if (f.contratoId) filtros.push(eq(obrigacoes.contratoId, f.contratoId))
-  // Vigência do CONTRATO (não da obrigação) cruza o intervalo -- a semântica da tela.
-  if (f.vigenciaDe) filtros.push(sql`${contratos.dataFim} >= ${f.vigenciaDe}`)
-  if (f.vigenciaAte) filtros.push(sql`${contratos.dataInicio} <= ${f.vigenciaAte}`)
-  if (f.busca) {
-    for (const palavra of f.busca.split(/\s+/).filter(Boolean).slice(0, 8)) {
-      filtros.push(sql`lower(f_unaccent(${obrigacoes.descricao} || ' ' || ${contratos.nome} || ' ' || ${contratos.codigo})) like ${padraoBusca(palavra)}`)
-    }
-  }
-  const onde = and(...filtros)
+  const onde = and(...filtrosObrigacoes(usuario, f, hoje))
 
   const [linhas, [{ total }], responsaveis] = await Promise.all([
     db
@@ -121,6 +108,41 @@ export async function listarObrigacoes(
     porPagina: f.porPagina,
     facetas: { responsaveis: responsaveis.map((r) => r.r) },
   }
+}
+
+/** Visibilidade + filtros da lista global (também usados na exportação). */
+function filtrosObrigacoes(usuario: UsuarioSessao, f: Omit<FiltroObrigacoes, 'pagina' | 'porPagina'>, hoje: string): SQL[] {
+  const filtros: SQL[] = [sqlVisivel(usuario)]
+  if (f.situacao !== 'todas') filtros.push(eq(obrigacoes.situacao, f.situacao))
+  if (f.atrasadas) filtros.push(eq(obrigacoes.situacao, 'pendente'), lt(obrigacoes.data, hoje))
+  if (f.responsavel) filtros.push(eq(obrigacoes.responsavel, f.responsavel))
+  if (f.contratoId) filtros.push(eq(obrigacoes.contratoId, f.contratoId))
+  // Vigência do CONTRATO (não da obrigação) cruza o intervalo -- a semântica da tela.
+  if (f.vigenciaDe) filtros.push(sql`${contratos.dataFim} >= ${f.vigenciaDe}`)
+  if (f.vigenciaAte) filtros.push(sql`${contratos.dataInicio} <= ${f.vigenciaAte}`)
+  if (f.busca) {
+    for (const palavra of f.busca.split(/\s+/).filter(Boolean).slice(0, 8)) {
+      filtros.push(sql`lower(f_unaccent(${obrigacoes.descricao} || ' ' || ${contratos.nome} || ' ' || ${contratos.codigo})) like ${padraoBusca(palavra)}`)
+    }
+  }
+  return filtros
+}
+
+/** Exportação: as linhas da lista (mesmos filtros e ordem), sem paginar; busca `limite + 1`. */
+export async function obrigacoesParaExportar(
+  usuario: UsuarioSessao,
+  f: Omit<FiltroObrigacoes, 'pagina' | 'porPagina'>,
+  limite: number,
+  hoje: string = hojeSP(),
+): Promise<Obrigacao[]> {
+  const linhas = await db
+    .select({ o: obrigacoes, c: contratos })
+    .from(obrigacoes)
+    .innerJoin(contratos, eq(contratos.id, obrigacoes.contratoId))
+    .where(and(...filtrosObrigacoes(usuario, f, hoje)))
+    .orderBy(asc(obrigacoes.data), asc(contratos.codigo))
+    .limit(limite + 1)
+  return linhas.map((l) => paraObrigacao(l.o, l.c, hoje))
 }
 
 export async function obrigacoesDoContrato(usuario: UsuarioSessao, contratoId: string, hoje: string = hojeSP()): Promise<Obrigacao[]> {
