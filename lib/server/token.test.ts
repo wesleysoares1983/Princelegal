@@ -13,7 +13,7 @@ describe('token assinado', () => {
   })
 
   it('recusa dados alterados (troca de nivel no conteudo)', () => {
-    const token = assinar({ nivel: 'user', exp: daquiA(60) }, SEGREDO)
+    const token = assinar({ nivel: 'leitura', exp: daquiA(60) }, SEGREDO)
     const [, assinatura] = token.split('.')
     const forjado = Buffer.from(JSON.stringify({ nivel: 'admin', exp: daquiA(60) })).toString('base64url')
     expect(verificar(`${forjado}.${assinatura}`, SEGREDO)).toBeNull()

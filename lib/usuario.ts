@@ -2,13 +2,18 @@
  * Usuario logado, como o app enxerga.
  *
  * Os dados vem do cadastro central (Apps Princesa) no login; o `nivel` e
- * derivado do cargo do usuario NESTE app: so o cargo exatamente "ADMIN" da
- * acesso de administrador. "USUARIO", cargo vazio ou qualquer outro nome
- * caem em usuario comum -- um cargo novo criado no cadastro central nunca
- * vira admin por acidente.
+ * derivado do cargo do usuario NESTE app, sempre pelo nome exato:
+ *
+ * - "ADMIN" -> administrador: o unico que cadastra e altera;
+ * - "FUNCIONARIO" (o cargo padrao), cargo vazio ou qualquer outro nome ->
+ *   somente leitura. Um cargo novo criado no cadastro central nunca ganha
+ *   poder de escrita por acidente.
  */
 
-export type NivelUsuario = 'admin' | 'user'
+export type NivelUsuario = 'admin' | 'leitura'
+
+/** Cargo padrao no cadastro central: somente leitura. */
+export const CARGO_PADRAO = 'FUNCIONARIO'
 
 export interface UsuarioSessao {
   matricula: string
@@ -20,5 +25,10 @@ export interface UsuarioSessao {
 }
 
 export function nivelDoCargo(cargo: string | null | undefined): NivelUsuario {
-  return cargo === 'ADMIN' ? 'admin' : 'user'
+  return cargo === 'ADMIN' ? 'admin' : 'leitura'
+}
+
+/** Cadastrar, editar, anexar, cumprir... Tudo que nao e so consultar. */
+export function podeEscrever(usuario: Pick<UsuarioSessao, 'nivel'> | null | undefined): boolean {
+  return usuario?.nivel === 'admin'
 }

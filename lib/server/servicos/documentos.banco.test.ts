@@ -26,8 +26,8 @@ afterAll(fecharBanco)
 const HOJE = '2026-10-09'
 const CTX = { ip: '10.0.0.7', userAgent: 'vitest' }
 const ADMIN: UsuarioSessao = { matricula: 'DA', nome: 'Dora Admin', email: 'dora@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const GESTOR: UsuarioSessao = { matricula: 'DG', nome: 'Davi Gestor', email: 'davi@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
-const OUTRO: UsuarioSessao = { matricula: 'DO', nome: 'Dina Outra', email: 'dina@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const GESTOR: UsuarioSessao = { matricula: 'DG', nome: 'Davi Gestor', email: 'davi@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
+const OUTRO: UsuarioSessao = { matricula: 'DO', nome: 'Dina Outra', email: 'dina@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 
 const pdf = (texto: string) => validarArquivo({ name: `${texto}.pdf`, bytes: new Uint8Array(Buffer.from(`%PDF-1.7\n${texto}\n%%EOF`)) })
 
@@ -141,28 +141,29 @@ describe('envio, versões e download', () => {
 })
 
 describe('permissões e estado do contrato', () => {
-  it('contrato restrito: quem não vê recebe 404 em listar, enviar e baixar', async () => {
+  it('contrato restrito: quem não vê recebe 404 em listar e baixar; enviar já para no somente leitura', async () => {
     const c = await novo({ acessoRestrito: true }, GESTOR, pdf('sigiloso'))
     const [doc] = await listarDocumentos(GESTOR, c.id)
     await falha(listarDocumentos(OUTRO, c.id), 'NAO_ENCONTRADO')
-    await falha(enviarDocumento(OUTRO, c.id, { arquivo: pdf('x'), tipo: 'Anexo' }, CTX), 'NAO_ENCONTRADO')
+    await falha(enviarDocumento(OUTRO, c.id, { arquivo: pdf('x'), tipo: 'Anexo' }, CTX), 'SEM_PERMISSAO')
     await falha(abrirArquivo(OUTRO, doc.id, 'atual', CTX), 'NAO_ENCONTRADO')
   })
 
   it('remover: some da lista; só admin vê removidos, baixa e restaura', async () => {
     const c = await novo({}, GESTOR, pdf('removivel'))
     const [doc] = await listarDocumentos(GESTOR, c.id)
-    await removerDocumento(OUTRO, doc.id, 'Enviado no contrato errado', CTX)
+    await falha(removerDocumento(OUTRO, doc.id, 'Somente leitura', CTX), 'SEM_PERMISSAO')
+    await removerDocumento(GESTOR, doc.id, 'Enviado no contrato errado', CTX)
 
-    expect(await listarDocumentos(GESTOR, c.id)).toHaveLength(0)
-    expect(await listarDocumentos(GESTOR, c.id, { incluirRemovidos: true })).toHaveLength(0) // pedido ignorado
+    expect(await listarDocumentos(OUTRO, c.id)).toHaveLength(0)
+    expect(await listarDocumentos(OUTRO, c.id, { incluirRemovidos: true })).toHaveLength(0) // pedido ignorado
     const [doAdmin] = await listarDocumentos(ADMIN, c.id, { incluirRemovidos: true })
-    expect(doAdmin.removido).toMatchObject({ motivo: 'Enviado no contrato errado', por: { matricula: 'DO' } })
+    expect(doAdmin.removido).toMatchObject({ motivo: 'Enviado no contrato errado', por: { matricula: 'DG' } })
 
-    await falha(abrirArquivo(GESTOR, doc.id, 'atual', CTX), 'NAO_ENCONTRADO')
+    await falha(abrirArquivo(OUTRO, doc.id, 'atual', CTX), 'NAO_ENCONTRADO')
     await abrirArquivo(ADMIN, doc.id, 'atual', CTX) // admin ainda baixa
     await falha(enviarNovaVersao(ADMIN, doc.id, pdf('nova'), CTX), 'REGRA_NEGOCIO')
-    await falha(restaurarDocumento(GESTOR, doc.id, CTX), 'SEM_PERMISSAO')
+    await falha(restaurarDocumento(OUTRO, doc.id, CTX), 'SEM_PERMISSAO')
 
     const r = await restaurarDocumento(ADMIN, doc.id, CTX)
     expect(r.removido).toBeNull()

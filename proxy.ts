@@ -9,6 +9,7 @@ import {
   limparSessao,
 } from '@/lib/server/sessao'
 import { revalidarSessao } from '@/lib/server/usuariosApp'
+import { podeEscrever, type UsuarioSessao } from '@/lib/usuario'
 
 /**
  * Trava o sistema atras do login, no servidor.
@@ -75,6 +76,17 @@ function seguir(req: NextRequest, headers?: Headers) {
   return res
 }
 
+/**
+ * Pagina que o nivel nao pode abrir -> para onde mandar. Configuracoes e so
+ * de administrador; cadastro de contrato nao abre para somente leitura. A
+ * API barra o mesmo nos servicos; aqui so se evita a tela que nao funcionaria.
+ */
+function paginaBarrada(pathname: string, usuario: UsuarioSessao): string | null {
+  if (pathname.startsWith('/configuracoes') && usuario.nivel !== 'admin') return '/'
+  if (pathname.startsWith('/contratos/novo') && !podeEscrever(usuario)) return '/contratos'
+  return null
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   if (PUBLICAS.has(pathname)) return seguir(req)
@@ -90,11 +102,8 @@ export async function proxy(req: NextRequest) {
   if (revalidacao.tipo === 'revogado') return semSessao(req, 'acesso_revogado')
 
   if (revalidacao.tipo === 'ok') {
-    // Configurações é só de administrador.
-    if (pathname.startsWith('/configuracoes') && token.u.nivel !== 'admin') {
-      return NextResponse.redirect(new URL('/', req.url))
-    }
-    return seguir(req)
+    const destino = paginaBarrada(pathname, token.u)
+    return destino ? NextResponse.redirect(new URL(destino, req.url)) : seguir(req)
   }
 
   // Dados mudaram no cadastro central: cookie novo (mesmo prazo) na resposta
@@ -103,8 +112,9 @@ export async function proxy(req: NextRequest) {
   const novoToken = { ...token, u: revalidacao.usuario }
   const valor = assinarSessao(novoToken)
   let res: NextResponse
-  if (pathname.startsWith('/configuracoes') && novoToken.u.nivel !== 'admin') {
-    res = NextResponse.redirect(new URL('/', req.url))
+  const destino = paginaBarrada(pathname, novoToken.u)
+  if (destino) {
+    res = NextResponse.redirect(new URL(destino, req.url))
   } else {
     req.cookies.set(COOKIE_SESSAO, valor)
     const headers = new Headers(req.headers)

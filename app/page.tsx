@@ -2,12 +2,15 @@
 
 import Link from 'next/link'
 import { EstadoConsulta } from '@/components/EstadoConsulta'
+import { useUsuario } from '@/components/ProvedorUsuario'
 import { SeloStatus } from '@/components/SeloStatus'
 import { usePainel } from '@/lib/api/contratos'
 import { formatarData, formatarMoeda } from '@/lib/shared/status'
+import { podeEscrever } from '@/lib/usuario'
 
 /** Início: os números da carteira (só contratos que o usuário pode ver). */
 export default function Inicio() {
+  const escreve = podeEscrever(useUsuario())
   const { data, isPending, error, refetch } = usePainel()
 
   const n = data?.contagens
@@ -112,9 +115,11 @@ export default function Inicio() {
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-tinta-fraca">
                       Nenhum contrato ativo ainda.{' '}
-                      <Link href="/contratos/novo" className="text-marca hover:underline">
-                        Cadastrar o primeiro
-                      </Link>
+                      {escreve && (
+                        <Link href="/contratos/novo" className="text-marca hover:underline">
+                          Cadastrar o primeiro
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 )}

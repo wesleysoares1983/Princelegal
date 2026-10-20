@@ -18,7 +18,7 @@ const { fecharBanco } = await import('@/lib/server/db/cliente')
 afterAll(fecharBanco)
 
 const ADMIN: UsuarioSessao = { matricula: '1', nome: 'Ana', email: 'a@x', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const COMUM: UsuarioSessao = { ...ADMIN, matricula: '2', cargo: 'USUARIO', nivel: 'user' }
+const COMUM: UsuarioSessao = { ...ADMIN, matricula: '2', cargo: 'FUNCIONARIO', nivel: 'leitura' }
 
 const URL_BASE = 'http://localhost/api/v1/opcoes-cadastro'
 const json = (metodo: string, url: string, corpo?: unknown) =>

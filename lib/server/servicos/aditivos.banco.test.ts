@@ -15,8 +15,8 @@ afterAll(fecharBanco)
 const HOJE = '2026-10-09'
 const CTX = { ip: '10.0.0.4', userAgent: 'vitest' }
 const ADMIN: UsuarioSessao = { matricula: 'AA', nome: 'Alba Admin', email: 'alba@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const GESTOR: UsuarioSessao = { matricula: 'AG', nome: 'Aldo Gestor', email: 'aldo@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
-const OUTRO: UsuarioSessao = { matricula: 'AO', nome: 'Ana Outra', email: 'ana.outra@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const GESTOR: UsuarioSessao = { matricula: 'AG', nome: 'Aldo Gestor', email: 'aldo@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
+const OUTRO: UsuarioSessao = { matricula: 'AO', nome: 'Ana Outra', email: 'ana.outra@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 
 const pdf = (t: string) => validarArquivo({ name: `${t}.pdf`, bytes: new Uint8Array(Buffer.from(`%PDF-1.7\n${t}\n%%EOF`)) })
 
@@ -95,7 +95,7 @@ describe('invariante §6.4: criar → aditivo → aditivo → anular → aditivo
     expect(c.valorMensal).toBe(1250)
     await confereInvariante(c.id)
     expect(c.historico.map((h) => [h.tipo, h.numero])).toEqual([['Original', null], ['Aditivo', 1], ['Aditivo', 2]])
-    expect(c.historico.filter((h) => h.anulavel)).toHaveLength(0) // gestor não anula
+    expect((await obterContrato(OUTRO, c.id, undefined, HOJE)).historico.filter((h) => h.anulavel)).toHaveLength(0) // somente leitura não anula
 
     const doAdmin = await obterContrato(ADMIN, c.id, undefined, HOJE)
     expect(doAdmin.historico.map((h) => h.anulavel)).toEqual([false, false, true]) // só o último
@@ -144,12 +144,12 @@ describe('registrarAditivo — regras', () => {
     expect(r.avaliacao.status).toBe('vencido')
   })
 
-  it('encerrado -> REGRA_NEGOCIO; restrito que não vê -> 404', async () => {
+  it('encerrado -> REGRA_NEGOCIO; somente leitura -> SEM_PERMISSAO (antes de olhar o contrato)', async () => {
     const c = await novo()
     await encerrarContrato(ADMIN, c.id, { versao: 1, justificativa: 'Encerrado para teste' }, CTX, HOJE)
     await falha(registrarAditivo(ADMIN, c.id, { versao: 2, dataInicio: '2025-01-01', dataFim: '2027-12-31', valorMensal: 1 }, CTX, HOJE), 'REGRA_NEGOCIO')
     const r = await novo({ acessoRestrito: true })
-    await falha(registrarAditivo(OUTRO, r.id, { versao: 1, dataInicio: '2025-01-01', dataFim: '2027-12-31', valorMensal: 1 }, CTX, HOJE), 'NAO_ENCONTRADO')
+    await falha(registrarAditivo(OUTRO, r.id, { versao: 1, dataInicio: '2025-01-01', dataFim: '2027-12-31', valorMensal: 1 }, CTX, HOJE), 'SEM_PERMISSAO')
   })
 
   it('com o aditivo assinado: documento "Aditivo NN - …" ligado à vigência e na aba Documentos', async () => {
@@ -177,7 +177,7 @@ describe('anularAditivo — regras', () => {
     c = await registrarAditivo(GESTOR, c.id, { versao: 1, dataInicio: '2027-01-01', dataFim: '2027-12-31', valorMensal: 1000 }, CTX, HOJE)
     c = await registrarAditivo(GESTOR, c.id, { versao: 2, dataInicio: '2028-01-01', dataFim: '2028-12-31', valorMensal: 1000 }, CTX, HOJE)
     const [original, a1, a2] = c.historico
-    await falha(anularAditivo(GESTOR, c.id, a2.id, { versao: 3, justificativa: 'Gestor tentando' }, CTX, HOJE), 'SEM_PERMISSAO')
+    await falha(anularAditivo(OUTRO, c.id, a2.id, { versao: 3, justificativa: 'Leitura tentando' }, CTX, HOJE), 'SEM_PERMISSAO')
     await falha(anularAditivo(ADMIN, c.id, a1.id, { versao: 3, justificativa: 'Não é o último' }, CTX, HOJE), 'REGRA_NEGOCIO')
     await falha(anularAditivo(ADMIN, c.id, original.id, { versao: 3, justificativa: 'Original não' }, CTX, HOJE), 'REGRA_NEGOCIO')
     await anularAditivo(ADMIN, c.id, a2.id, { versao: 3, justificativa: 'Errado' }, CTX, HOJE)
@@ -236,12 +236,9 @@ describe('renovarContrato', () => {
     expect(await listarDocumentos(GESTOR, antigo.id)).toHaveLength(0)
   })
 
-  it('restrito: quem renova não pode se trancar fora do novo', async () => {
-    const antigo = await novo({ acessoRestrito: true })
-    await falha(
-      renovarContrato(GESTOR, antigo.id, { versao: 1, dataInicio: '2027-01-01', dataFim: '2027-12-31', valorMensal: 1, gestorEmail: 'outra@x.com' }, CTX, HOJE),
-      'REGRA_NEGOCIO',
-    )
+  it('somente leitura não renova; nada fica pela metade', async () => {
+    const antigo = await novo()
+    await falha(renovarContrato(OUTRO, antigo.id, { versao: 1, dataInicio: '2027-01-01', dataFim: '2027-12-31', valorMensal: 1 }, CTX, HOJE), 'SEM_PERMISSAO')
     // Nada ficou pela metade: o antigo continua aberto.
     expect((await obterContrato(GESTOR, antigo.id, undefined, HOJE)).encerramento).toBeNull()
   })

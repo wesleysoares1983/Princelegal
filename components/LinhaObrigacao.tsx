@@ -8,11 +8,13 @@ import { useCancelarObrigacao, useCumprirObrigacao, useDesfazerCumprimento, useE
 import { hojeSP } from '@/lib/shared/datas'
 import { RECORRENCIAS, type Obrigacao, type Recorrencia } from '@/lib/shared/obrigacoes'
 import { formatarData } from '@/lib/shared/status'
+import { podeEscrever } from '@/lib/usuario'
 
 /**
  * Uma obrigação numa tabela (aba do contrato ou tela geral), com as ações:
  * cumprir e cancelar (quem vê o contrato, inclusive encerrado), editar (só
  * na aba, contrato aberto) e desfazer cumprimento (quem marcou ou admin).
+ * Somente leitura não vê nenhuma delas.
  */
 
 const classeInput =
@@ -37,7 +39,8 @@ export function LinhaObrigacao({ o, mostrarContrato = false, podeEditar = false 
   const editar = useEditarObrigacao()
   const desfazer = useDesfazerCumprimento()
   const ocupado = cumprir.isPending || cancelar.isPending || editar.isPending || desfazer.isPending
-  const podeDesfazer = o.situacao === 'cumprida' && (usuario?.nivel === 'admin' || o.cumpridaPor?.matricula === usuario?.matricula)
+  const escreve = podeEscrever(usuario)
+  const podeDesfazer = escreve && o.situacao === 'cumprida' && (usuario?.nivel === 'admin' || o.cumpridaPor?.matricula === usuario?.matricula)
 
   async function executar(acao: () => Promise<unknown>) {
     setErro('')
@@ -91,7 +94,7 @@ export function LinhaObrigacao({ o, mostrarContrato = false, podeEditar = false 
         </td>
         <td className="px-4 py-2">
           <div className="flex flex-wrap justify-end gap-x-3 gap-y-1 text-[11px] font-semibold">
-            {o.situacao === 'pendente' && (
+            {escreve && o.situacao === 'pendente' && (
               <>
                 <button type="button" onClick={() => setPainel(painel === 'cumprir' ? null : 'cumprir')} className="text-status-vigente hover:underline">
                   Cumprir

@@ -5,7 +5,7 @@ import { ListaUsuarios } from './ListaUsuarios'
 /**
  * Usuarios com acesso ao sistema -- somente leitura.
  *
- * Quem cadastra, libera acesso e define o cargo (ADMIN/USUARIO) e o cadastro
+ * Quem cadastra, libera acesso e define o cargo (ADMIN/FUNCIONARIO) e o cadastro
  * central dos Apps Princesa; aqui so se consulta. A lista vem da mesma copia
  * usada para revalidar sessoes, renovada se tiver mais de 1 minuto, para o
  * administrador ver o estado atual logo depois de mexer la.

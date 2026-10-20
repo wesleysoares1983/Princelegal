@@ -18,7 +18,7 @@ const { opcoesCadastro } = await import('@/lib/server/db/esquema')
 afterAll(fecharBanco)
 
 const ADMIN: UsuarioSessao = { matricula: 'RA', nome: 'Rota Admin', email: 'rota.admin@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const COMUM: UsuarioSessao = { matricula: 'RC', nome: 'Rota Comum', email: 'rota.comum@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const COMUM: UsuarioSessao = { matricula: 'RC', nome: 'Rota Comum', email: 'rota.comum@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 
 const BASE = 'http://localhost/api/v1/contratos'
 const req = (metodo: string, url: string, corpo?: unknown) =>

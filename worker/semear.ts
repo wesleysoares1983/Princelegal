@@ -27,7 +27,7 @@ if (existsSync('.env')) process.loadEnvFile('.env')
 process.env.SMTP_HOST = ''
 
 const ADMIN: UsuarioSessao = { matricula: '900001', nome: 'Mariana Kowalski', email: 'mariana.kowalski@exemplo.com.br', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const GESTOR: UsuarioSessao = { matricula: '900002', nome: 'Rafael Andrade', email: 'rafael.andrade@exemplo.com.br', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const GESTOR: UsuarioSessao = { matricula: '900002', nome: 'Rafael Andrade', email: 'rafael.andrade@exemplo.com.br', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
 const CTX = { ip: null, userAgent: 'seed de desenvolvimento' }
 
 const GESTORES = [

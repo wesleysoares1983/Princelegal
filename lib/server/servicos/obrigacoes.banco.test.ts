@@ -22,8 +22,8 @@ afterAll(fecharBanco)
 const HOJE = '2026-03-15'
 const CTX = { ip: '10.0.0.3', userAgent: 'vitest' }
 const ADMIN: UsuarioSessao = { matricula: 'OA', nome: 'Otto Admin', email: 'otto@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const GESTOR: UsuarioSessao = { matricula: 'OG', nome: 'Olívia Gestora', email: 'olivia@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
-const OUTRO: UsuarioSessao = { matricula: 'OO', nome: 'Oscar Outro', email: 'oscar@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const GESTOR: UsuarioSessao = { matricula: 'OG', nome: 'Olívia Gestora', email: 'olivia@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
+const OUTRO: UsuarioSessao = { matricula: 'OO', nome: 'Oscar Outro', email: 'oscar@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 
 async function falha(p: Promise<unknown>, codigo: string): Promise<ErroApi> {
   const e = await p.then(
@@ -118,9 +118,10 @@ describe('desfazer, cancelar, editar', () => {
   it('cancelar encerra a série; só pendente', async () => {
     const c = await novoContrato()
     const { obrigacao } = await nova(c.id)
-    const cancelada = await cancelarObrigacao(OUTRO, obrigacao.id, 'Fornecedor mudou a data', CTX, HOJE)
+    await falha(cancelarObrigacao(OUTRO, obrigacao.id, 'Somente leitura', CTX, HOJE), 'SEM_PERMISSAO')
+    const cancelada = await cancelarObrigacao(GESTOR, obrigacao.id, 'Fornecedor mudou a data', CTX, HOJE)
     expect(cancelada).toMatchObject({ situacao: 'cancelada', motivoCancelamento: 'Fornecedor mudou a data' })
-    await falha(cancelarObrigacao(OUTRO, obrigacao.id, 'De novo', CTX, HOJE), 'REGRA_NEGOCIO')
+    await falha(cancelarObrigacao(GESTOR, obrigacao.id, 'De novo', CTX, HOJE), 'REGRA_NEGOCIO')
     await falha(cumprirObrigacao(GESTOR, obrigacao.id, {}, CTX, HOJE), 'CONFLITO')
   })
 
@@ -144,12 +145,12 @@ describe('contrato encerrado e restrito', () => {
     expect((await cumprirObrigacao(GESTOR, atrasada.id, {}, CTX, HOJE)).proxima).toBeNull()
   })
 
-  it('restrito: fora da lista e 404 nas ações para quem não vê', async () => {
+  it('restrito: fora da lista e 404 para quem não vê; ação já para no somente leitura', async () => {
     const c = await novoContrato({ acessoRestrito: true })
     const { obrigacao } = await nova(c.id, { descricao: 'Obrigação sigilosa XPTO' })
     const lista = await listarObrigacoes(OUTRO, { situacao: 'todas', busca: 'XPTO', atrasadas: false, pagina: 1, porPagina: 50 }, HOJE)
     expect(lista.total).toBe(0)
-    await falha(cumprirObrigacao(OUTRO, obrigacao.id, {}, CTX, HOJE), 'NAO_ENCONTRADO')
+    await falha(cumprirObrigacao(OUTRO, obrigacao.id, {}, CTX, HOJE), 'SEM_PERMISSAO')
     await falha(obrigacoesDoContrato(OUTRO, c.id, HOJE), 'NAO_ENCONTRADO')
   })
 })

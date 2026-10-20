@@ -21,7 +21,7 @@ const { auditoria, opcoesCadastro } = await import('@/lib/server/db/esquema')
 afterAll(fecharBanco)
 
 const ADMIN: UsuarioSessao = { matricula: 'EA', nome: 'Exporta Admin', email: 'exporta.admin@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const COMUM: UsuarioSessao = { matricula: 'EC', nome: 'Exporta Comum', email: 'exporta.comum@x.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const COMUM: UsuarioSessao = { matricula: 'EC', nome: 'Exporta Comum', email: 'exporta.comum@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 const CTX = { ip: null, userAgent: 'teste' }
 const MARCA = 'Zebraexport'
 

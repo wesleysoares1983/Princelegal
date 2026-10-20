@@ -28,7 +28,7 @@ const sessaoDe = (u: UsuarioDoApp, extra: Partial<UsuarioSessao> = {}): UsuarioS
   email: u.email,
   perfil: u.perfil,
   cargo: u.cargo,
-  nivel: u.cargo === 'ADMIN' ? 'admin' : 'user',
+  nivel: u.cargo === 'ADMIN' ? 'admin' : 'leitura',
   ...extra,
 })
 
@@ -52,11 +52,11 @@ describe('revalidarSessao', () => {
   })
 
   it('cargo mudou -> atualizado, com o nível recalculado', async () => {
-    listar.mockResolvedValue(listagem({ ...ANA, cargo: 'USUARIO' }))
+    listar.mockResolvedValue(listagem({ ...ANA, cargo: 'FUNCIONARIO' }))
     const { revalidarSessao } = await modulo()
     const r = await revalidarSessao(sessaoDe(ANA))
     expect(r.tipo).toBe('atualizado')
-    expect(r.tipo === 'atualizado' && r.usuario).toMatchObject({ cargo: 'USUARIO', nivel: 'user' })
+    expect(r.tipo === 'atualizado' && r.usuario).toMatchObject({ cargo: 'FUNCIONARIO', nivel: 'leitura' })
   })
 
   it('inativo no cadastro central -> revogado', async () => {
