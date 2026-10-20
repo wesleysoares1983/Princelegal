@@ -4,3 +4,4 @@ next-env.d.ts
 *.tsbuildinfo
 .env*.local
 Tela de login.png
+/data/contratos-protheus.json

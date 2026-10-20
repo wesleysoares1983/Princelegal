@@ -24,6 +24,11 @@ export const AREAS: Area[] = [
     icone: 'livro',
   },
   {
+    slug: 'contratos-protheus',
+    nome: 'Contratos Protheus',
+    icone: 'servidor',
+  },
+  {
     slug: 'obrigacoes',
     nome: 'Obrigações',
     icone: 'lista',

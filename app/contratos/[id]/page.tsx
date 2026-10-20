@@ -57,6 +57,7 @@ export default function DetalheContrato() {
   const [aditivosLocais, setAditivosLocais] = useState<RegistroHistorico[]>([])
   const [documentosLocais, setDocumentosLocais] = useState<Documento[]>([])
   const [aditivoAberto, setAditivoAberto] = useState(false)
+  const [tipoLancamento, setTipoLancamento] = useState<'Aditivo' | 'Renovação'>('Aditivo')
   const [aditivo, setAditivo] = useState({ dataInicio: '', dataFim: '', valorMensal: '', observacao: '' })
   const [arquivoAditivo, setArquivoAditivo] = useState<File | null>(null)
   const [erroAditivo, setErroAditivo] = useState('')
@@ -82,11 +83,18 @@ export default function DetalheContrato() {
     setEncerradoLocalEm(new Date().toISOString().slice(0, 10))
   }
 
-  function abrirAditivo() {
-    setAditivo({ dataInicio: contrato.dataInicio, dataFim: contrato.dataFim, valorMensal: String(contrato.valorMensal), observacao: '' })
+  function abrirAditivo(tipo: 'Aditivo' | 'Renovação' = 'Aditivo') {
+    setTipoLancamento(tipo)
+    setAditivo({
+      dataInicio: tipo === 'Renovação' ? contrato.dataFim : contrato.dataInicio,
+      dataFim: tipo === 'Renovação' ? '' : contrato.dataFim,
+      valorMensal: String(contrato.valorMensal),
+      observacao: '',
+    })
     setArquivoAditivo(null)
     setErroAditivo('')
     setAditivoAberto(true)
+    setAba('Histórico')
   }
 
   function selecionarArquivoAditivo(escolhido: File | null) {
@@ -113,24 +121,24 @@ export default function DetalheContrato() {
     setAditivosLocais((atual) => [
       ...atual,
       {
-        id: `aditivo-local-${numero}`,
-        tipo: 'Aditivo',
+        id: `registro-local-${numero}`,
+        tipo: tipoLancamento,
         dataInicio: aditivo.dataInicio,
         dataFim: aditivo.dataFim,
         valorMensal: valor,
         observacao: aditivo.observacao.trim() || undefined,
       },
     ])
-    // O arquivo do aditivo tambem entra na aba Documentos, no mesmo lugar em
-    // que o contrato ficaria se o upload fosse de verdade -- sem isto, quem
-    // assina o aditivo so acharia o PDF procurando no Historico.
+    // O arquivo do aditivo/renovacao tambem entra na aba Documentos, no mesmo
+    // lugar em que o contrato ficaria se o upload fosse de verdade -- sem
+    // isto, quem assina o aditivo so acharia o PDF procurando no Historico.
     if (arquivoAditivo) {
       setDocumentosLocais((atual) => [
         ...atual,
         {
           id: `documento-local-${atual.length + 1}`,
           nome: arquivoAditivo.name,
-          tipo: 'Aditivo',
+          tipo: tipoLancamento,
           versao: numero,
           enviadoEm: new Date().toISOString().slice(0, 10),
           enviadoPor: usuarioAtual() ?? 'Usuário',
@@ -163,6 +171,7 @@ export default function DetalheContrato() {
             </button>
           )}
           <button
+            onClick={() => abrirAditivo('Renovação')}
             disabled={av.status === 'encerrado'}
             className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -354,7 +363,7 @@ export default function DetalheContrato() {
             {!aditivoAberto && av.status !== 'encerrado' && (
               <button
                 type="button"
-                onClick={abrirAditivo}
+                onClick={() => abrirAditivo('Aditivo')}
                 className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
               >
                 + Novo aditivo
@@ -367,7 +376,9 @@ export default function DetalheContrato() {
               className="grad-quadro space-y-3 rounded-xl border p-4"
               style={{ '--cor-quadro': 'var(--roxo)' } as React.CSSProperties}
             >
-              <p className="text-[13px] font-semibold text-tinta">Vincular aditivo de contrato</p>
+              <p className="text-[13px] font-semibold text-tinta">
+                {tipoLancamento === 'Renovação' ? 'Registrar renovação de contrato' : 'Vincular aditivo de contrato'}
+              </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label className="block">
                   <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Nova vigência — início</span>
@@ -410,7 +421,9 @@ export default function DetalheContrato() {
               </label>
 
               <div>
-                <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">Aditivo assinado (PDF ou Word)</span>
+                <span className="text-[11px] uppercase tracking-[0.05em] text-tinta-fraca">
+                  {tipoLancamento === 'Renovação' ? 'Termo de renovação assinado (PDF ou Word)' : 'Aditivo assinado (PDF ou Word)'}
+                </span>
                 {arquivoAditivo ? (
                   <div className="mt-1 flex items-center justify-between gap-2 rounded-md border border-borda bg-painel-2 px-3 py-2">
                     <span className="truncate text-[13px] font-semibold text-tinta">
@@ -455,7 +468,7 @@ export default function DetalheContrato() {
                   onClick={registrarAditivo}
                   className="rounded-md bg-marca px-4 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90"
                 >
-                  Vincular aditivo
+                  {tipoLancamento === 'Renovação' ? 'Registrar renovação' : 'Vincular aditivo'}
                 </button>
               </div>
             </div>

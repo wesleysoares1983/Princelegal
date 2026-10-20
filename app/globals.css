@@ -138,8 +138,30 @@ body {
 }
 
 * {
-  scrollbar-color: var(--borda) transparent;
+  scrollbar-color: var(--marca) transparent;
   scrollbar-width: thin;
+}
+
+/*
+ * Firefox pinta a barra com uma cor só (scrollbar-color acima); o degrade
+ * verde da paleta só é possível no Chrome/Edge, via pseudo-elementos.
+ */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--marca) 0%, color-mix(in srgb, var(--marca) 45%, var(--painel)) 100%);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--alta) 0%, var(--marca) 100%);
+  background-clip: padding-box;
 }
 
 /* Menu lateral solido, so com uma sombra separando ele do conteudo. */
