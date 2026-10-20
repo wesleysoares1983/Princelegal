@@ -26,8 +26,8 @@ const HOJE = '2026-10-07'
 const CTX = { ip: '10.0.0.9', userAgent: 'vitest' }
 
 const ADMIN: UsuarioSessao = { matricula: 'A1', nome: 'Ana Admin', email: 'ana@empresa.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const GESTOR: UsuarioSessao = { matricula: 'G1', nome: 'Gil Gestor', email: 'gil@empresa.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
-const OUTRO: UsuarioSessao = { matricula: 'O1', nome: 'Olga Outra', email: 'olga@empresa.com', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const GESTOR: UsuarioSessao = { matricula: 'G1', nome: 'Gil Gestor', email: 'gil@empresa.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
+const OUTRO: UsuarioSessao = { matricula: 'O1', nome: 'Olga Outra', email: 'olga@empresa.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 
 /** Opcoes proprias deste arquivo: nao depende do estado deixado por outros testes. */
 const op: Record<string, string> = {}
@@ -178,17 +178,8 @@ describe('criarContrato', () => {
     await criar({ fornecedorDocumento: doc, dataInicio: '2029-01-01', dataFim: '2029-12-31' })
   })
 
-  it('duplicidade só considera contratos que o usuário vê (não revela restritos)', async () => {
-    const doc = cnpjUnico()
-    await criar({ fornecedorDocumento: doc, acessoRestrito: true }) // do Gil, restrito
-    await criar({ fornecedorDocumento: doc }, OUTRO) // Olga não vê o restrito: sem aviso
-  })
-
-  it('restrito por quem não é envolvido -> REGRA_NEGOCIO citando o e-mail da sessão', async () => {
-    const e = await falha(criar({ acessoRestrito: true }, OUTRO), 'REGRA_NEGOCIO')
-    expect(e.message).toContain('olga@empresa.com')
-    await criar({ acessoRestrito: true }, GESTOR) // envolvido: ok
-    await criar({ acessoRestrito: true }, ADMIN) // admin: ok
+  it('restrito: admin cadastra mesmo sem ser envolvido', async () => {
+    await criar({ acessoRestrito: true }, ADMIN)
   })
 })
 
@@ -294,14 +285,9 @@ describe('editarContrato', () => {
     }
   })
 
-  it('restrição: só admin/envolvido alteram; ninguém se tranca fora', async () => {
+  it('restrição: somente leitura não altera; admin altera', async () => {
     const c = await criar()
     await falha(editarContrato(OUTRO, c.id, { versao: 1, acessoRestrito: true }, CTX, HOJE), 'SEM_PERMISSAO')
-    // Gil restringe e troca o próprio e-mail de gestor: ficaria de fora.
-    await falha(
-      editarContrato(GESTOR, c.id, { versao: 1, acessoRestrito: true, gestorEmail: 'outra@empresa.com' }, CTX, HOJE),
-      'REGRA_NEGOCIO',
-    )
     const r = await editarContrato(GESTOR, c.id, { versao: 1, acessoRestrito: true }, CTX, HOJE)
     expect(r.acessoRestrito).toBe(true)
   })
@@ -332,7 +318,7 @@ describe('editarContrato', () => {
 describe('encerrar / reabrir', () => {
   it('só admin; data não pode ser futura nem antes do início', async () => {
     const c = await criar()
-    await falha(encerrarContrato(GESTOR, c.id, { versao: 1, justificativa: 'Fim do serviço' }, CTX, HOJE), 'SEM_PERMISSAO')
+    await falha(encerrarContrato(OUTRO, c.id, { versao: 1, justificativa: 'Fim do serviço' }, CTX, HOJE), 'SEM_PERMISSAO')
     await falha(encerrarContrato(ADMIN, c.id, { versao: 1, justificativa: 'Fim do serviço', data: '2026-10-08' }, CTX, HOJE), 'VALIDACAO')
     await falha(encerrarContrato(ADMIN, c.id, { versao: 1, justificativa: 'Fim do serviço', data: '2025-12-31' }, CTX, HOJE), 'VALIDACAO')
   })
@@ -347,7 +333,7 @@ describe('encerrar / reabrir', () => {
     expect(e.permissoes).toMatchObject({ editar: false, encerrar: false, reabrir: true })
 
     await falha(encerrarContrato(ADMIN, c.id, { versao: 3, justificativa: 'De novo' }, CTX, HOJE), 'REGRA_NEGOCIO')
-    await falha(reabrirContrato(GESTOR, c.id, { versao: 3, justificativa: 'Engano' }, CTX, HOJE), 'SEM_PERMISSAO')
+    await falha(reabrirContrato(OUTRO, c.id, { versao: 3, justificativa: 'Engano' }, CTX, HOJE), 'SEM_PERMISSAO')
 
     const r = await reabrirContrato(ADMIN, c.id, { versao: 3, justificativa: 'Encerrado por engano' }, CTX, HOJE)
     expect(r.encerramento).toBeNull()
@@ -360,6 +346,24 @@ describe('encerrar / reabrir', () => {
   it('reabrir contrato aberto -> REGRA_NEGOCIO', async () => {
     const c = await criar()
     await falha(reabrirContrato(ADMIN, c.id, { versao: 1, justificativa: 'Nada a reabrir' }, CTX, HOJE), 'REGRA_NEGOCIO')
+  })
+})
+
+describe('somente leitura (cargo FUNCIONARIO)', () => {
+  // Mesmo e-mail do gestor: envolvido no contrato, e ainda assim só consulta.
+  const LEITOR: UsuarioSessao = { matricula: 'F1', nome: 'Gil Funcionário', email: 'gil@empresa.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+
+  it('vê o contrato restrito em que é envolvido, sem nenhuma permissão de escrita', async () => {
+    const c = await criar({ acessoRestrito: true })
+    const visto = await obterContrato(LEITOR, c.id, undefined, HOJE)
+    expect(Object.values(visto.permissoes).every((p) => p === false)).toBe(true)
+    expect((await listarContratos(LEITOR, filtro(), HOJE)).itens.some((i) => i.id === c.id)).toBe(true)
+  })
+
+  it('não cadastra nem edita -> SEM_PERMISSAO', async () => {
+    await falha(criar({}, LEITOR), 'SEM_PERMISSAO')
+    const c = await criar()
+    await falha(editarContrato(LEITOR, c.id, { versao: 1, nome: 'X' }, CTX, HOJE), 'SEM_PERMISSAO')
   })
 })
 

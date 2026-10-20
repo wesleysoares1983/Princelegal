@@ -4,7 +4,7 @@ import type { Documento, TipoDocumento, VersaoDocumento } from '@/lib/shared/doc
 import type { UsuarioSessao } from '@/lib/usuario'
 import { abrir, comGravacao, type Gravacao } from '../armazenamento'
 import { registrarAuditoria, type ContextoAuditoria } from '../auditoria'
-import { ehAdmin, exigirAdmin } from '../auth'
+import { ehAdmin, exigirAdmin, exigirEscrita } from '../auth'
 import { db, type Executor } from '../db/cliente'
 import { contratos, documentos, documentoVersoes } from '../db/esquema'
 import { erroConflito, erroNaoEncontrado, erroRegraNegocio } from '../http/erros'
@@ -160,6 +160,7 @@ export async function enviarDocumento(
   dados: DadosNovoDocumento,
   contexto: ContextoAuditoria,
 ): Promise<Documento> {
+  exigirEscrita(usuario)
   return comGravacao((gravacao) =>
     db.transaction(async (tx) => {
       const c = await carregar(tx, usuario, contratoId, true)
@@ -175,6 +176,7 @@ export async function enviarNovaVersao(
   arquivo: ArquivoValidado,
   contexto: ContextoAuditoria,
 ): Promise<Documento> {
+  exigirEscrita(usuario)
   return comGravacao((gravacao) =>
     db.transaction(async (tx) => {
       const { d, c } = await carregarDocumento(tx, usuario, documentoId, true)
@@ -224,6 +226,7 @@ export async function enviarNovaVersao(
 // ---------------------------------------------------------------- remover / restaurar
 
 export async function removerDocumento(usuario: UsuarioSessao, documentoId: string, motivo: string, contexto: ContextoAuditoria): Promise<Documento> {
+  exigirEscrita(usuario)
   return db.transaction(async (tx) => {
     const { d, c } = await carregarDocumento(tx, usuario, documentoId, true)
     exigirContratoAberto(c)

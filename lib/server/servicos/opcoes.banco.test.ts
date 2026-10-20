@@ -9,7 +9,7 @@ import { criarOpcao, desativarOpcao, editarOpcao, listarOpcoes, reativarOpcao } 
 afterAll(fecharBanco)
 
 const ADMIN: UsuarioSessao = { matricula: '1', nome: 'Ana Admin', email: 'ana@x', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const COMUM: UsuarioSessao = { matricula: '2', nome: 'João', email: 'joao@x', perfil: null, cargo: 'USUARIO', nivel: 'user' }
+const COMUM: UsuarioSessao = { matricula: '2', nome: 'João', email: 'joao@x', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
 const CTX = { ip: '10.0.0.1', userAgent: 'vitest' }
 
 /** Espera um ErroApi com esse codigo; devolve-o para inspecao. */

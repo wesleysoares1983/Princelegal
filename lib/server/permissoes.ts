@@ -1,5 +1,5 @@
 import type { PermissoesContrato } from '@/lib/shared/contratos'
-import type { UsuarioSessao } from '@/lib/usuario'
+import { podeEscrever, type UsuarioSessao } from '@/lib/usuario'
 import { ehAdmin } from './auth'
 
 /**
@@ -40,7 +40,8 @@ export function permissoesDoContrato(
   usuario: UsuarioSessao,
   c: PessoasDoContrato & { encerradoEm: string | null; motivoEncerramento: 'manual' | 'renovado' | null },
 ): PermissoesContrato {
-  const aberto = c.encerradoEm === null
+  // Somente leitura nao faz nada, nem no contrato em que e gestor/juridico.
+  const aberto = c.encerradoEm === null && podeEscrever(usuario)
   // Chegou ate aqui = pode ver; ver um contrato aberto permite editar (§5.5).
   const editar = aberto && podeVer(usuario, c)
   return {

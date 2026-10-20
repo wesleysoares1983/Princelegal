@@ -8,7 +8,7 @@ import { formatarData, formatarMoeda } from '@/lib/shared/status'
 import type { UsuarioSessao } from '@/lib/usuario'
 import { comGravacao } from '../armazenamento'
 import { registrarAuditoria, type ContextoAuditoria } from '../auditoria'
-import { exigirAdmin } from '../auth'
+import { exigirAdmin, exigirEscrita } from '../auth'
 import { db, type Executor } from '../db/cliente'
 import { contratos, contratoVigencias } from '../db/esquema'
 import { ErroApi, erroConflito, erroRegraNegocio, erroValidacao } from '../http/erros'
@@ -61,6 +61,7 @@ export async function registrarAditivo(
   hoje: string = hojeSP(),
   arquivo?: ArquivoValidado,
 ): Promise<ContratoDetalhe> {
+  exigirEscrita(usuario)
   return comGravacao((gravacao) =>
     db.transaction(async (tx) => {
       const c = await carregar(tx, usuario, contratoId, true)
@@ -243,6 +244,7 @@ export async function renovarContrato(
   hoje: string = hojeSP(),
   arquivo?: ArquivoValidado,
 ): Promise<ContratoDetalhe> {
+  exigirEscrita(usuario)
   return comGravacao((gravacao) =>
     db.transaction(async (tx) => {
       const antigo = await carregar(tx, usuario, contratoId, true)

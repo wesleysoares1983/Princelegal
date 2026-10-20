@@ -16,7 +16,7 @@ import {
 import { formatarData } from '@/lib/shared/status'
 import type { UsuarioSessao } from '@/lib/usuario'
 import { registrarAuditoria, type ContextoAuditoria } from '../auditoria'
-import { ehAdmin } from '../auth'
+import { ehAdmin, exigirEscrita } from '../auth'
 import { db, type Executor } from '../db/cliente'
 import { padraoBusca, sqlVisivel } from '../db/consultas/contratos'
 import { contratos, obrigacoes } from '../db/esquema'
@@ -169,6 +169,7 @@ export async function criarObrigacao(
   contexto: ContextoAuditoria,
   hoje: string = hojeSP(),
 ): Promise<{ obrigacao: Obrigacao; avisos: string[] }> {
+  exigirEscrita(usuario)
   return db.transaction(async (tx) => {
     const c = await carregar(tx, usuario, contratoId, true)
     exigirAberto(c)
@@ -212,6 +213,7 @@ export async function editarObrigacao(
   contexto: ContextoAuditoria,
   hoje: string = hojeSP(),
 ): Promise<Obrigacao> {
+  exigirEscrita(usuario)
   return db.transaction(async (tx) => {
     const { o, c } = await carregarObrigacao(tx, usuario, id, true)
     exigirAberto(c)
@@ -276,6 +278,7 @@ export async function cumprirObrigacao(
   contexto: ContextoAuditoria,
   hoje: string = hojeSP(),
 ): Promise<{ obrigacao: Obrigacao; proxima: Obrigacao | null }> {
+  exigirEscrita(usuario)
   return db.transaction(async (tx) => {
     const { o, c } = await carregarObrigacao(tx, usuario, id, true)
     if (o.situacao !== 'pendente') throw erroConflito('Esta obrigação não está mais pendente.')
@@ -317,6 +320,7 @@ export async function cumprirObrigacao(
 }
 
 export async function desfazerCumprimento(usuario: UsuarioSessao, id: string, contexto: ContextoAuditoria, hoje: string = hojeSP()): Promise<Obrigacao> {
+  exigirEscrita(usuario)
   return db.transaction(async (tx) => {
     const { o, c } = await carregarObrigacao(tx, usuario, id, true)
     if (o.situacao !== 'cumprida') throw erroRegraNegocio('Esta obrigação não está marcada como cumprida.')
@@ -355,6 +359,7 @@ export async function desfazerCumprimento(usuario: UsuarioSessao, id: string, co
 }
 
 export async function cancelarObrigacao(usuario: UsuarioSessao, id: string, motivo: string, contexto: ContextoAuditoria, hoje: string = hojeSP()): Promise<Obrigacao> {
+  exigirEscrita(usuario)
   return db.transaction(async (tx) => {
     const { o, c } = await carregarObrigacao(tx, usuario, id, true)
     if (o.situacao !== 'pendente') throw erroRegraNegocio('Só obrigações pendentes podem ser canceladas.')

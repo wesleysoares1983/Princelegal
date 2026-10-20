@@ -6,9 +6,11 @@ import { Suspense, useEffect, useState } from 'react'
 import { EstadoConsulta } from '@/components/EstadoConsulta'
 import { SeloStatus } from '@/components/SeloStatus'
 import { BotaoExportar } from '@/components/BotaoExportar'
+import { useUsuario } from '@/components/ProvedorUsuario'
 import { caminhoExportarContratos, useContratos } from '@/lib/api/contratos'
 import { FILTROS_STATUS, type FiltroStatus } from '@/lib/shared/contratos'
 import { formatarData, formatarMoeda } from '@/lib/shared/status'
+import { podeEscrever } from '@/lib/usuario'
 
 const FILTROS: { valor: FiltroStatus; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todos' },
@@ -37,6 +39,7 @@ export default function ListaContratos() {
  * buscar e paginar acontece no servidor -- inclusive o status, calculado lá.
  */
 function ConteudoListaContratos() {
+  const escreve = podeEscrever(useUsuario())
   const params = useSearchParams()
   const router = useRouter()
   const caminho = usePathname()
@@ -89,9 +92,11 @@ function ConteudoListaContratos() {
         </div>
         <div className="flex items-center gap-3">
           {data && data.total > 0 && <BotaoExportar caminho={caminhoExportarContratos(filtroLista)} />}
-          <Link href="/contratos/novo" className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90">
-            + Novo contrato
-          </Link>
+          {escreve && (
+            <Link href="/contratos/novo" className="rounded-md bg-marca px-3 py-2 text-[12px] font-semibold text-marca-tinta hover:opacity-90">
+              + Novo contrato
+            </Link>
+          )}
         </div>
       </div>
 

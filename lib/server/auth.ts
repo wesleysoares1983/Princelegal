@@ -1,4 +1,4 @@
-import type { UsuarioSessao } from '@/lib/usuario'
+import { podeEscrever, type UsuarioSessao } from '@/lib/usuario'
 import { erroSemPermissao } from './http/erros'
 
 /**
@@ -14,4 +14,9 @@ export function ehAdmin(usuario: UsuarioSessao): boolean {
 
 export function exigirAdmin(usuario: UsuarioSessao): void {
   if (!ehAdmin(usuario)) throw erroSemPermissao('Apenas administradores podem fazer isto.')
+}
+
+/** Barra o nivel somente leitura em toda escrita (vem antes de qualquer outra regra). */
+export function exigirEscrita(usuario: UsuarioSessao): void {
+  if (!podeEscrever(usuario)) throw erroSemPermissao('Seu acesso é somente leitura.')
 }

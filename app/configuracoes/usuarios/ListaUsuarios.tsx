@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { nivelDoCargo } from '@/lib/usuario'
+import { CARGO_PADRAO, nivelDoCargo, type NivelUsuario } from '@/lib/usuario'
 
 interface Usuario {
   matricula: string
@@ -19,25 +19,27 @@ const SEM_CARGO = '__sem_cargo__'
 const classeInput =
   'rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none'
 
+const ROTULO_NIVEL: Record<NivelUsuario, string> = { admin: 'Admin', leitura: 'Somente leitura' }
+
 /**
- * Selo do cargo: so "ADMIN" vira administrador; o resto (inclusive cargos
- * que este app nao conhece) entra como usuario comum -- e o selo diz isso,
- * para quem ve um cargo estranho na lista entender o efeito dele aqui.
+ * Selo do cargo: so "ADMIN" e administrador; o resto (FUNCIONARIO, o padrao,
+ * e cargos que este app nao conhece) entra como somente leitura -- e o selo
+ * diz isso, para quem ve um cargo estranho na lista entender o efeito dele aqui.
  */
 function SeloCargo({ cargo }: { cargo: string | null }) {
-  const admin = nivelDoCargo(cargo) === 'admin'
-  const reconhecido = cargo === 'ADMIN' || cargo === 'USUARIO'
+  const nivel = nivelDoCargo(cargo)
+  const reconhecido = cargo === 'ADMIN' || cargo === CARGO_PADRAO
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
         className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] ${
-          admin ? 'border-marca/40 bg-marca-fraca text-marca' : 'border-borda bg-painel-2 text-tinta-fraca'
+          nivel === 'admin' ? 'border-marca/40 bg-marca-fraca text-marca' : 'border-borda bg-painel-2 text-tinta-fraca'
         }`}
       >
-        {admin ? 'Admin' : 'Usuário'}
+        {ROTULO_NIVEL[nivel]}
       </span>
       {!reconhecido && (
-        <span className="text-[10px] text-tinta-fraca" title="Cargo não reconhecido por este sistema: tratado como usuário comum.">
+        <span className="text-[10px] text-tinta-fraca" title="Cargo não reconhecido por este sistema: tratado como somente leitura.">
           {cargo ? `cargo “${cargo}”` : 'sem cargo'}
         </span>
       )}
