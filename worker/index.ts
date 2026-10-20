@@ -3,11 +3,14 @@
  *
  * - Alertas por e-mail: todo dia às 07:00 (ALERTAS_CRON), horário de Brasília.
  * - Limpeza de arquivos órfãos: domingo às 03:00.
+ * - Contratos do Protheus: todo dia às 09:00 (PROTHEUS_CRON), e na subida se
+ *   ainda não houver cache ou se a última sincronização falhou.
  *
  * Uso (depois de `npm run worker:build`):
  *   node dist/worker.cjs                      fica rodando com o agendamento
  *   node dist/worker.cjs alertas [--simular]  roda os alertas uma vez e sai
  *   node dist/worker.cjs limpar               roda a limpeza uma vez e sai
+ *   node dist/worker.cjs protheus             sincroniza os contratos do Protheus e sai
  *   node dist/worker.cjs verificar-email      conecta/autentica no SMTP, sem enviar
  *   node dist/worker.cjs teste-email <para>   manda um e-mail de teste para <para>
  *
@@ -16,13 +19,14 @@
  */
 import { existsSync } from 'node:fs'
 import cron from 'node-cron'
-import { configAlertas, configArmazenamento, configBanco, configEmail } from '@/lib/server/config'
+import { configAlertas, configArmazenamento, configBanco, configEmail, configProtheus } from '@/lib/server/config'
 import { verificarPastaGravavel } from '@/lib/server/armazenamento'
 import { fecharBanco } from '@/lib/server/db/cliente'
 import { enviarEmail, verificarSmtp } from '@/lib/server/email'
 import { log } from '@/lib/server/log'
 import { executarAlertas } from '@/lib/server/servicos/alertas'
 import { limparArquivosOrfaos } from '@/lib/server/servicos/documentos'
+import { lerCacheContratosProtheus, sincronizarContratosProtheus } from '@/lib/server/servicos/protheus'
 
 const FUSO = 'America/Sao_Paulo'
 
@@ -33,6 +37,7 @@ configBanco()
 configArmazenamento()
 configEmail()
 const alertas = configAlertas()
+const protheus = configProtheus()
 
 async function rodarAlertas(simular = false) {
   try {
@@ -51,6 +56,19 @@ async function rodarLimpeza() {
     log.info({ apagados: n }, 'limpeza de arquivos órfãos concluída')
   } catch (erro) {
     log.error({ err: erro }, 'limpeza de arquivos órfãos falhou')
+  }
+}
+
+/** Falha do Protheus não lança: fica registrada em `erro` no cache (a tela mostra os dados anteriores). */
+async function rodarProtheus() {
+  try {
+    const r = await sincronizarContratosProtheus()
+    if (r.erro) log.warn({ erro: r.erro }, 'protheus: sincronização falhou')
+    else log.info({ contratos: r.contratos.length }, 'protheus: sincronização concluída')
+    return !r.erro
+  } catch (erro) {
+    log.error({ err: erro }, 'protheus: não foi possível gravar o cache')
+    return false
   }
 }
 
@@ -94,14 +112,34 @@ async function main() {
     await fecharBanco()
     return
   }
+  if (comando === 'protheus') {
+    const ok = await rodarProtheus()
+    await fecharBanco()
+    process.exit(ok ? 0 : 1)
+  }
 
-  const tarefas = [cron.schedule('0 3 * * 0', rodarLimpeza, { timezone: FUSO, name: 'limpeza', noOverlap: true })]
+  const tarefas = [
+    cron.schedule('0 3 * * 0', rodarLimpeza, { timezone: FUSO, name: 'limpeza', noOverlap: true }),
+    cron.schedule(protheus.cron, () => void rodarProtheus(), { timezone: FUSO, name: 'protheus', noOverlap: true }),
+  ]
   if (alertas.ativos) {
     tarefas.push(cron.schedule(alertas.cron, () => void rodarAlertas(), { timezone: FUSO, name: 'alertas', noOverlap: true }))
   } else {
     log.warn('ALERTAS_ATIVOS=false: e-mails de alerta desligados neste ambiente')
   }
-  log.info({ alertas: alertas.ativos ? alertas.cron : 'desligados', modoEmail: configEmail().smtp ? 'smtp' : 'arquivo' }, 'worker iniciado')
+  log.info(
+    {
+      alertas: alertas.ativos ? alertas.cron : 'desligados',
+      protheus: protheus.conexao ? protheus.cron : 'sem PROTHEUS_CONTRACTS_TOKEN',
+      modoEmail: configEmail().smtp ? 'smtp' : 'arquivo',
+    },
+    'worker iniciado',
+  )
+
+  // Primeiro deploy (sem cache) ou falha anterior (ex.: token corrigido no .env):
+  // não espera o próximo horário agendado.
+  const cache = await lerCacheContratosProtheus()
+  if (!cache || cache.erro) void rodarProtheus()
 
   const parar = async (sinal: string) => {
     log.info({ sinal }, 'worker parando')

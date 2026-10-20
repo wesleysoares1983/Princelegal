@@ -39,7 +39,8 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     TZ=America/Sao_Paulo \
     ARMAZENAMENTO_DIR=/data/arquivos \
-    EMAIL_ARQUIVOS_DIR=/data/emails
+    EMAIL_ARQUIVOS_DIR=/data/emails \
+    PROTHEUS_CACHE_DIR=/data/protheus
 # npm, npx, corepack e yarn vêm na imagem base mas não são usados em execução
 # (só `node`): saem, junto com as dependências deles, que o Trivy acusava
 # (tar, undici, ip-address, brace-expansion do npm embutido). O build usa npm
@@ -49,7 +50,7 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack 
       /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-* \
  && apk add --no-cache tzdata \
  && addgroup -S -g 1001 app && adduser -S -u 1001 -G app app \
- && mkdir -p /data/arquivos /data/emails && chown app:app /data/arquivos /data/emails
+ && mkdir -p /data/arquivos /data/emails /data/protheus && chown app:app /data/arquivos /data/emails /data/protheus
 
 # Código é do root (somente leitura para o app); só /data é gravável.
 COPY --from=build /app/.next/standalone ./

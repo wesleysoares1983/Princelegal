@@ -13,6 +13,7 @@ x-comum: &comum
     NODE_ENV: production
     ARMAZENAMENTO_DIR: /data/arquivos
     EMAIL_ARQUIVOS_DIR: /data/emails
+    PROTHEUS_CACHE_DIR: /data/protheus
   restart: unless-stopped
   logging:
     driver: json-file
@@ -36,6 +37,9 @@ services:
       - "${APP_PORTA:-3400}:3400"
     volumes:
       - ${ARQUIVOS_DIR:-./dados/arquivos}:/data/arquivos
+      # Cache do Protheus: volume nomeado (herda o dono 1001 da imagem), sobrevive
+      # a recriacao do container e fica fora do backup. O worker grava, o app so le.
+      - protheus:/data/protheus
     depends_on:
       migrate: { condition: service_completed_successfully }
 
@@ -44,7 +48,11 @@ services:
     command: [ "node", "dist/worker.cjs" ]
     volumes:
       - ${ARQUIVOS_DIR:-./dados/arquivos}:/data/arquivos
+      - protheus:/data/protheus
     healthcheck: { disable: true }
     stop_grace_period: 30s
     depends_on:
       migrate: { condition: service_completed_successfully }
+
+volumes:
+  protheus:
