@@ -155,14 +155,31 @@ export const configAlertas = memorizar(() => {
 })
 
 const esquemaProtheus = z.object({
+  PROTHEUS_CONTRACTS_URL: opcional().pipe(z.url('PROTHEUS_CONTRACTS_URL deve ser uma URL').optional()),
+  // Sem token, a sincronizacao so registra "nao configurado" (ex.: desenvolvimento sem acesso ao Protheus).
+  PROTHEUS_CONTRACTS_TOKEN: opcional(),
   // Fora de ARMAZENAMENTO_DIR de proposito: a limpeza de orfaos apagaria o cache.
   PROTHEUS_CACHE_DIR: opcional(),
+  /** Horario da sincronizacao diaria feita pelo worker (Brasilia). */
+  PROTHEUS_CRON: z.string().trim().default('0 9 * * *'),
 })
 
-/** Pasta do cache da sincronizacao com o Protheus (no Docker, fixo em /data/protheus). */
-export const configProtheus = memorizar(() => {
+export interface ConfigProtheus {
+  /** null = sem token: nao ha o que consultar. */
+  conexao: { url: string; token: string } | null
+  /** Pasta do cache (no Docker, fixa em /data/protheus). */
+  pastaCache: string
+  cron: string
+}
+
+export const configProtheus = memorizar((): ConfigProtheus => {
   const e = ler(esquemaProtheus)
-  return { pastaCache: e.PROTHEUS_CACHE_DIR ?? '.dados/protheus' }
+  const url = e.PROTHEUS_CONTRACTS_URL ?? 'https://api.princesadoscampos.com.br/api/protheus/contracts'
+  return {
+    conexao: e.PROTHEUS_CONTRACTS_TOKEN ? { url, token: e.PROTHEUS_CONTRACTS_TOKEN } : null,
+    pastaCache: e.PROTHEUS_CACHE_DIR ?? '.dados/protheus',
+    cron: e.PROTHEUS_CRON,
+  }
 })
 
 /** Confere todas as variaveis de uma vez; lanca com a lista completa do que esta errado. */

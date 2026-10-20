@@ -1,25 +1,20 @@
-import { mkdir, readFile, rename, writeFile } from 'fs/promises'
-import path from 'path'
-import { configProtheus } from './server/config'
-import type { ContratoProtheus } from './contratosProtheus'
+import 'server-only'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { dirname, resolve } from 'node:path'
+import type { ContratoProtheus, ContratosProtheus } from '@/lib/shared/contratosProtheus'
+import { configProtheus } from '../config'
 
 /**
  * Sincronização com o endpoint de contratos do Protheus.
  *
  * O endpoint não é consultado a cada acesso da tela: `sincronizarContratosProtheus`
- * roda uma vez por dia (agendada em instrumentation.ts) e grava o resultado num
- * arquivo local. A tela e a rota /api/protheus/contracts só leem esse arquivo,
+ * roda uma vez por dia (agendada no worker, worker/index.ts) e grava o resultado num
+ * arquivo local. A tela e GET /api/v1/contratos-protheus só leem esse arquivo,
  * então ficam no ar mesmo se o Protheus estiver fora nesse momento.
  */
 
 /** No Docker o codigo e somente leitura; so /data aceita escrita (ver Dockerfile). */
-const caminhoCache = () => path.resolve(configProtheus().pastaCache, 'contratos-protheus.json')
-
-export interface CacheContratosProtheus {
-  atualizadoEm: string // ISO datetime
-  contratos: ContratoProtheus[]
-  erro?: string
-}
+const caminhoCache = () => resolve(configProtheus().pastaCache, 'contratos-protheus.json')
 
 /** O Protheus manda datas como "AAAAMMDD" (string, sem separador). */
 function dataProtheusParaIso(valor: unknown): string {
@@ -67,24 +62,29 @@ function extrairLista(payload: unknown): Record<string, unknown>[] {
   return []
 }
 
-export async function sincronizarContratosProtheus(): Promise<CacheContratosProtheus> {
-  const url = process.env.PROTHEUS_CONTRACTS_URL
-  const token = process.env.PROTHEUS_CONTRACTS_TOKEN
+/**
+ * Consulta o Protheus e grava o cache. Falha do Protheus não lança: vai para
+ * `erro`, mantendo os contratos da última sincronização que deu certo. Só
+ * lança se não conseguir gravar o cache.
+ */
+export async function sincronizarContratosProtheus(): Promise<ContratosProtheus> {
+  const { conexao } = configProtheus()
 
-  if (!url || !token) {
-    const cache: CacheContratosProtheus = {
+  if (!conexao) {
+    const cache: ContratosProtheus = {
       atualizadoEm: new Date().toISOString(),
       contratos: [],
-      erro: 'PROTHEUS_CONTRACTS_URL ou PROTHEUS_CONTRACTS_TOKEN não configurados (.env.local).',
+      erro: 'Integração com o Protheus não configurada (defina PROTHEUS_CONTRACTS_TOKEN no .env).',
     }
     await gravarCache(cache)
     return cache
   }
 
   try {
-    const resposta = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+    const resposta = await fetch(conexao.url, {
+      headers: { Authorization: `Bearer ${conexao.token}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(60_000),
     })
 
     if (!resposta.ok) {
@@ -94,13 +94,13 @@ export async function sincronizarContratosProtheus(): Promise<CacheContratosProt
     const payload = await resposta.json()
     const contratos = extrairLista(payload).map(mapearContrato)
 
-    const cache: CacheContratosProtheus = { atualizadoEm: new Date().toISOString(), contratos }
+    const cache: ContratosProtheus = { atualizadoEm: new Date().toISOString(), contratos }
     await gravarCache(cache)
     return cache
   } catch (erro) {
     const mensagem = erro instanceof Error ? erro.message : 'Falha desconhecida ao sincronizar com o Protheus.'
     const anterior = await lerCacheContratosProtheus()
-    const cache: CacheContratosProtheus = {
+    const cache: ContratosProtheus = {
       atualizadoEm: new Date().toISOString(),
       contratos: anterior?.contratos ?? [],
       erro: mensagem,
@@ -111,19 +111,31 @@ export async function sincronizarContratosProtheus(): Promise<CacheContratosProt
 }
 
 /** Grava num temporario e troca com `rename` (atomico): quem le nunca pega o JSON pela metade. */
-async function gravarCache(cache: CacheContratosProtheus): Promise<void> {
+async function gravarCache(cache: ContratosProtheus): Promise<void> {
   const destino = caminhoCache()
   const temporario = `${destino}.tmp`
-  await mkdir(path.dirname(destino), { recursive: true })
+  await mkdir(dirname(destino), { recursive: true })
   await writeFile(temporario, JSON.stringify(cache, null, 2), 'utf-8')
   await rename(temporario, destino)
 }
 
-export async function lerCacheContratosProtheus(): Promise<CacheContratosProtheus | null> {
+/** null = ainda não houve sincronização (ou o arquivo está ilegível). */
+export async function lerCacheContratosProtheus(): Promise<ContratosProtheus | null> {
   try {
     const conteudo = await readFile(caminhoCache(), 'utf-8')
-    return JSON.parse(conteudo) as CacheContratosProtheus
+    return JSON.parse(conteudo) as ContratosProtheus
   } catch {
     return null
   }
+}
+
+/** O que a tela recebe: o cache, ou um aviso enquanto o worker não sincronizou. */
+export async function listarContratosProtheus(): Promise<ContratosProtheus> {
+  return (
+    (await lerCacheContratosProtheus()) ?? {
+      atualizadoEm: null,
+      contratos: [],
+      erro: 'Os contratos do Protheus ainda não foram sincronizados. Tente novamente em alguns minutos.',
+    }
+  )
 }

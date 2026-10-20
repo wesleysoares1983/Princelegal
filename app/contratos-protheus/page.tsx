@@ -1,15 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { listarContratosProtheus, type ContratoProtheus } from '@/lib/contratosProtheus'
+import { useMemo, useState } from 'react'
+import { EstadoConsulta } from '@/components/EstadoConsulta'
+import { useContratosProtheus } from '@/lib/api/contratosProtheus'
+import type { ContratoProtheus } from '@/lib/shared/contratosProtheus'
 import { diasAte } from '@/lib/shared/datas'
 import { formatarData, formatarMoeda } from '@/lib/shared/status'
 
+const NENHUM: ContratoProtheus[] = []
+
 export default function ListaContratosProtheus() {
-  const [contratos, setContratos] = useState<ContratoProtheus[]>([])
-  const [atualizadoEm, setAtualizadoEm] = useState<string | null>(null)
-  const [carregando, setCarregando] = useState(true)
-  const [erro, setErro] = useState<string | null>(null)
+  const { data, isPending, error, refetch } = useContratosProtheus()
+  const contratos = data?.contratos ?? NENHUM
+  const atualizadoEm = data?.atualizadoEm ?? null
+  // Falha da sincronizacao (vem no cache); falha da propria consulta fica no EstadoConsulta.
+  const erro = data?.erro ?? null
   const [busca, setBusca] = useState('')
   const [filial, setFilial] = useState('todas')
   const [situacao, setSituacao] = useState('todas')
@@ -17,26 +22,6 @@ export default function ListaContratosProtheus() {
   const [campoData, setCampoData] = useState<'dataInicio' | 'dataFim'>('dataFim')
   const [dataDe, setDataDe] = useState('')
   const [dataAte, setDataAte] = useState('')
-
-  useEffect(() => {
-    let cancelado = false
-    listarContratosProtheus()
-      .then((resposta) => {
-        if (cancelado) return
-        setContratos(resposta.contratos)
-        setAtualizadoEm(resposta.atualizadoEm)
-        if (resposta.erro) setErro(resposta.erro)
-      })
-      .catch(() => {
-        if (!cancelado) setErro('Não foi possível carregar os contratos do Protheus.')
-      })
-      .finally(() => {
-        if (!cancelado) setCarregando(false)
-      })
-    return () => {
-      cancelado = true
-    }
-  }, [])
 
   const comDias = useMemo(
     () => contratos.map((c) => ({ c, dias: c.dataFim ? diasAte(c.dataFim) : null })),
@@ -136,6 +121,8 @@ export default function ListaContratosProtheus() {
         </button>
       )}
 
+      {error && <EstadoConsulta carregando={false} erro={error} tentarDeNovo={refetch} />}
+
       {erro && (
         <p className="rounded-md border border-status-vencido/40 bg-status-vencido-fraca px-3 py-2 text-[12px] text-status-vencido">
           {erro}
@@ -225,14 +212,14 @@ export default function ListaContratosProtheus() {
               </tr>
             </thead>
             <tbody>
-              {carregando && (
+              {isPending && (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-tinta-fraca">
                     Carregando contratos do Protheus…
                   </td>
                 </tr>
               )}
-              {!carregando &&
+              {!isPending &&
                 filtrados.map((c) => (
                   <tr key={c.numero} className="border-t border-borda hover:bg-painel-2">
                     <td className="px-4 py-2 font-mono text-[11px] text-tinta-fraca">{c.numero}</td>
@@ -245,7 +232,7 @@ export default function ListaContratosProtheus() {
                     <td className="px-4 py-2 text-tinta-fraca">{c.situacao}</td>
                   </tr>
                 ))}
-              {!carregando && filtrados.length === 0 && (
+              {!isPending && !error && filtrados.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-tinta-fraca">
                     Nenhum contrato encontrado.

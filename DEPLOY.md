@@ -98,6 +98,9 @@ montada deve ser o uid 1001`.
 | `APP_PORTA` | porta deste host para o proxy reverso (padrão `3400`) |
 | `ARQUIVOS_DIR` | pasta dos documentos no host (padrão `./dados/arquivos`) |
 | `UPLOAD_MAX_MB` | tamanho máximo de documento (padrão `25`); mudar exige `--build` |
+| `PROTHEUS_CONTRACTS_TOKEN` | token da API de contratos do Protheus. Sem ele, a tela Contratos Protheus mostra "integração não configurada" |
+| `PROTHEUS_CONTRACTS_URL` | opcional; o padrão é `https://api.princesadoscampos.com.br/api/protheus/contracts` |
+| `PROTHEUS_CRON` | opcional; horário da sincronização diária com o Protheus (padrão `0 9 * * *`, horário de Brasília) |
 
 Não defina `ARMAZENAMENTO_DIR`, `EMAIL_ARQUIVOS_DIR` nem `PROTHEUS_CACHE_DIR`:
 dentro do container eles são fixos (`/data/...`). O cache do Protheus fica no
@@ -144,6 +147,25 @@ docker compose exec worker node dist/worker.cjs verificar-email               # 
 docker compose exec worker node dist/worker.cjs teste-email voce@empresa.com  # um e-mail de teste
 docker compose exec worker node dist/worker.cjs alertas --simular             # o que sairia hoje, sem enviar
 ```
+
+### 2.4 Conferir a integração com o Protheus
+
+A tela Contratos Protheus não consulta o Protheus: ela lê uma cópia que o
+`worker` atualiza uma vez por dia (`PROTHEUS_CRON`). O `worker` também
+sincroniza ao subir, se ainda não houver cópia ou se a última tentativa falhou.
+Para sincronizar na hora (por exemplo, depois de trocar o token):
+
+```sh
+docker compose exec worker node dist/worker.cjs protheus   # sai com código 0 se deu certo
+```
+
+O resultado aparece em `docker compose logs worker`
+(`protheus: sincronização concluída` ou `protheus: sincronização falhou`, com o
+motivo). Se o Protheus estiver fora, a tela continua mostrando os dados da
+última sincronização que deu certo, com um aviso do erro.
+
+Mudar `PROTHEUS_CONTRACTS_TOKEN` ou `PROTHEUS_CRON` no `.env` exige recriar o
+worker: `docker compose up -d worker`.
 
 ---
 
