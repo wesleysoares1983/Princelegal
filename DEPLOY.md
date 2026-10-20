@@ -99,8 +99,9 @@ montada deve ser o uid 1001`.
 | `ARQUIVOS_DIR` | pasta dos documentos no host (padrão `./dados/arquivos`) |
 | `UPLOAD_MAX_MB` | tamanho máximo de documento (padrão `25`); mudar exige `--build` |
 
-Não defina `ARMAZENAMENTO_DIR` nem `EMAIL_ARQUIVOS_DIR`: dentro do container
-eles são fixos (`/data/...`).
+Não defina `ARMAZENAMENTO_DIR`, `EMAIL_ARQUIVOS_DIR` nem `PROTHEUS_CACHE_DIR`:
+dentro do container eles são fixos (`/data/...`). O cache do Protheus fica no
+volume nomeado `protheus` (não precisa de pasta no host nem de backup).
 
 ### 2.2 Proxy reverso existente
 

@@ -154,9 +154,26 @@ export const configAlertas = memorizar(() => {
   return { ativos: e.ALERTAS_ATIVOS, cron: e.ALERTAS_CRON }
 })
 
+const esquemaProtheus = z.object({
+  // Fora de ARMAZENAMENTO_DIR de proposito: a limpeza de orfaos apagaria o cache.
+  PROTHEUS_CACHE_DIR: opcional(),
+})
+
+/** Pasta do cache da sincronizacao com o Protheus (no Docker, fixo em /data/protheus). */
+export const configProtheus = memorizar(() => {
+  const e = ler(esquemaProtheus)
+  return { pastaCache: e.PROTHEUS_CACHE_DIR ?? '.dados/protheus' }
+})
+
 /** Confere todas as variaveis de uma vez; lanca com a lista completa do que esta errado. */
 export function validarAmbiente() {
-  const resultado = esquemaAppsPrincesa.and(esquemaSessao).and(esquemaBanco).and(esquemaArmazenamento).and(esquemaEmail).safeParse(process.env)
+  const resultado = esquemaAppsPrincesa
+    .and(esquemaSessao)
+    .and(esquemaBanco)
+    .and(esquemaArmazenamento)
+    .and(esquemaEmail)
+    .and(esquemaProtheus)
+    .safeParse(process.env)
   if (!resultado.success) {
     const problemas = resultado.error.issues.map((i) => `  - ${i.message}`).join('\n')
     throw new Error(`Configuração inválida no .env:\n${problemas}`)
