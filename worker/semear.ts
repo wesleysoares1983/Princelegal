@@ -118,7 +118,7 @@ const MODELOS: Modelo[] = [
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
-    console.error('db:semear é só para desenvolvimento (NODE_ENV=production).')
+    console.error('db:seed é só para desenvolvimento (NODE_ENV=production).')
     process.exit(1)
   }
   // Import depois do ajuste do SMTP: a configuração é lida (e memorizada) no primeiro uso.
@@ -136,7 +136,7 @@ async function main() {
   const banco = configBanco()
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(contratos)
   if (n > 0 && !process.argv.includes('--forcar')) {
-    console.error(`O banco ${banco.host}/${banco.database} já tem ${n} contrato(s). Nada foi feito.\nPara semear mesmo assim (duplica o conjunto): npm run db:semear -- --forcar`)
+    console.error(`O banco ${banco.host}/${banco.database} já tem ${n} contrato(s). Nada foi feito.\nPara semear mesmo assim (duplica o conjunto): npm run db:seed -- --forcar`)
     await fecharBanco()
     process.exit(1)
   }
