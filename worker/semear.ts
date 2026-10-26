@@ -4,8 +4,8 @@
  * obrigações (em dia, atrasadas, cumpridas), tarefas no quadro e alertas já
  * enviados -- para apresentar o sistema.
  *
- *   npm run db:semear              recusa se já houver contratos no banco
- *   npm run db:semear -- --forcar  semeia mesmo assim (duplica o conjunto)
+ *   npm run db:seed              recusa se já houver contratos no banco
+ *   npm run db:seed -- --forcar  semeia mesmo assim (duplica o conjunto)
  *
  * Passa pelos mesmos serviços das telas: auditoria, códigos e regras saem
  * iguais aos de um cadastro de verdade. Por isso NÃO há como desfazer pelo
