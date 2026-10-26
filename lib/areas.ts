@@ -34,6 +34,11 @@ export const AREAS: Area[] = [
     icone: 'lista',
   },
   {
+    slug: 'tarefas',
+    nome: 'Tarefas',
+    icone: 'quadro',
+  },
+  {
     slug: 'alertas',
     nome: 'Alertas',
     icone: 'sino',
