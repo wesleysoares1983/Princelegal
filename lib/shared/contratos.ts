@@ -348,7 +348,7 @@ export const esquemaListarContratos = z.object({
 })
 export type FiltroContratos = z.infer<typeof esquemaListarContratos>
 
-export const CATEGORIAS_AUDITORIA = ['contrato', 'documento', 'obrigacao', 'acesso', 'configuracao', 'exportacao', 'sistema'] as const
+export const CATEGORIAS_AUDITORIA = ['contrato', 'documento', 'obrigacao', 'acesso', 'configuracao', 'exportacao', 'sistema', 'tarefa'] as const
 
 export const esquemaListarAuditoria = z.object({
   busca: z.string().trim().max(200).optional(),

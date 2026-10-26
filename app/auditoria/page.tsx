@@ -11,8 +11,9 @@ import { formatarDataHora } from '@/lib/shared/status'
  *
  * O detalhe do contrato ja mostra a auditoria dele; esta tela responde "quem
  * cadastrou/alterou/encerrou o que" sem abrir contrato por contrato. Cada um
- * ve os eventos dos contratos que pode ver; eventos de configuracao (opcoes
- * de cadastro) aparecem so para administradores.
+ * ve os eventos dos contratos que pode ver e os do quadro de tarefas (todos
+ * veem o quadro); eventos de configuracao (opcoes de cadastro) aparecem so
+ * para administradores.
  */
 export default function Auditoria() {
   const [busca, setBusca] = useState('')
@@ -40,7 +41,7 @@ export default function Auditoria() {
     <div className="mx-auto max-w-6xl space-y-4 p-6">
       <div>
         <h1 className="text-lg font-semibold text-tinta">Auditoria</h1>
-        <p className="text-[13px] text-tinta-fraca">Quem cadastrou, alterou, encerrou ou reabriu cada contrato — e quando.</p>
+        <p className="text-[13px] text-tinta-fraca">Quem cadastrou, alterou, encerrou ou reabriu cada contrato, e quem mexeu no quadro de tarefas — e quando.</p>
       </div>
 
       <div className="grad-quadro flex flex-wrap items-end gap-3 rounded-xl border p-3" style={{ '--cor-quadro': 'var(--marca)' } as React.CSSProperties}>
@@ -124,6 +125,10 @@ export default function Auditoria() {
                         </Link>
                         <p className="font-mono text-[11px] text-tinta-fraca">{e.contrato.codigo}</p>
                       </>
+                    ) : e.categoria === 'tarefa' ? (
+                      <Link href="/tarefas" className="font-medium text-tinta hover:text-marca">
+                        Tarefas
+                      </Link>
                     ) : (
                       <span className="text-tinta-fraca">—</span>
                     )}

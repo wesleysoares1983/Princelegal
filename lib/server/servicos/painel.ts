@@ -94,12 +94,17 @@ export async function listarAuditoria(
 ): Promise<Paginado<EventoAuditoria> & { facetas: { usuarios: { matricula: string; nome: string }[] } }> {
   const admin = ehAdmin(usuario)
 
-  // Visibilidade (vale tambem para as facetas).
+  // Visibilidade (vale tambem para as facetas). Tarefas: todos veem o quadro, entao todos veem os eventos dele.
   const visibilidade: SQL[] = admin
     ? f.incluirAcessos
       ? []
       : [sql`${auditoria.categoria} <> 'acesso'`]
-    : [inArray(auditoria.categoria, [...CATEGORIAS_DE_CONTRATO]), sql`${auditoria.contratoId} is not null`, sqlVisivel(usuario)]
+    : [
+        or(
+          and(inArray(auditoria.categoria, [...CATEGORIAS_DE_CONTRATO]), sql`${auditoria.contratoId} is not null`, sqlVisivel(usuario)),
+          eq(auditoria.categoria, 'tarefa'),
+        )!,
+      ]
 
   const filtros: SQL[] = []
   if (f.busca) {
@@ -139,9 +144,11 @@ export async function listarAuditoria(
   ])
 
   return {
-    itens: linhas.map((l) =>
-      paraEvento(l.auditoria, l.contratos ? { id: l.contratos.id, codigo: l.contratos.codigo, nome: l.contratos.nome } : null),
-    ),
+    itens: linhas.map((l) => {
+      const evento = paraEvento(l.auditoria, l.contratos ? { id: l.contratos.id, codigo: l.contratos.codigo, nome: l.contratos.nome } : null)
+      // `dados` de tarefa pode ter o id de um contrato restrito (vinculo): so admin recebe.
+      return evento.categoria === 'tarefa' && !admin ? { ...evento, dados: null } : evento
+    }),
     total,
     pagina: f.pagina,
     porPagina: f.porPagina,

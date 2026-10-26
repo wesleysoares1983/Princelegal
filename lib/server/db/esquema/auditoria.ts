@@ -9,6 +9,7 @@ export const categoriaAuditoria = pgEnum('categoria_auditoria', [
   'configuracao',
   'exportacao',
   'sistema',
+  'tarefa',
 ])
 
 /**

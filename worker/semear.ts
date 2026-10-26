@@ -1,11 +1,11 @@
 /**
  * Dados fictícios para DESENVOLVIMENTO: popula o banco do .env com contratos
  * em todos os status, aditivo, renovação, encerramento, documentos,
- * obrigações (em dia, atrasadas, cumpridas) e alertas já enviados -- para
- * apresentar o sistema.
+ * obrigações (em dia, atrasadas, cumpridas), tarefas no quadro e alertas já
+ * enviados -- para apresentar o sistema.
  *
- *   npm run db:semear              recusa se já houver contratos no banco
- *   npm run db:semear -- --forcar  semeia mesmo assim (duplica o conjunto)
+ *   npm run db:seed              recusa se já houver contratos no banco
+ *   npm run db:seed -- --forcar  semeia mesmo assim (duplica o conjunto)
  *
  * Passa pelos mesmos serviços das telas: auditoria, códigos e regras saem
  * iguais aos de um cadastro de verdade. Por isso NÃO há como desfazer pelo
@@ -20,6 +20,7 @@ import { sql } from 'drizzle-orm'
 import type { DadosCriarContrato } from '@/lib/shared/contratos'
 import { hojeSP, somarDias } from '@/lib/shared/datas'
 import type { Recorrencia } from '@/lib/shared/obrigacoes'
+import type { ColunaTarefa } from '@/lib/shared/tarefas'
 import type { UsuarioSessao } from '@/lib/usuario'
 
 if (existsSync('.env')) process.loadEnvFile('.env')
@@ -117,7 +118,7 @@ const MODELOS: Modelo[] = [
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
-    console.error('db:semear é só para desenvolvimento (NODE_ENV=production).')
+    console.error('db:seed é só para desenvolvimento (NODE_ENV=production).')
     process.exit(1)
   }
   // Import depois do ajuste do SMTP: a configuração é lida (e memorizada) no primeiro uso.
@@ -130,11 +131,12 @@ async function main() {
   const { enviarDocumento } = await import('@/lib/server/servicos/documentos')
   const { criarObrigacao, cumprirObrigacao } = await import('@/lib/server/servicos/obrigacoes')
   const { executarAlertas } = await import('@/lib/server/servicos/alertas')
+  const { criarTarefa, moverTarefa, removerTarefa } = await import('@/lib/server/servicos/tarefas')
 
   const banco = configBanco()
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(contratos)
   if (n > 0 && !process.argv.includes('--forcar')) {
-    console.error(`O banco ${banco.host}/${banco.database} já tem ${n} contrato(s). Nada foi feito.\nPara semear mesmo assim (duplica o conjunto): npm run db:semear -- --forcar`)
+    console.error(`O banco ${banco.host}/${banco.database} já tem ${n} contrato(s). Nada foi feito.\nPara semear mesmo assim (duplica o conjunto): npm run db:seed -- --forcar`)
     await fecharBanco()
     process.exit(1)
   }
@@ -211,9 +213,11 @@ async function main() {
   }
 
   // Encerrado: a assessoria de marketing foi descontinuada.
+  let encerradoId: string
   {
     const c = await criarContrato(GESTOR, { ...dadosDe(MODELOS[9], 9), nome: 'Agência de publicidade – Campanhas', categoriaId: opcao('categoria', 'Prestação de Serviço'), fornecedorNome: 'Criativa Comunicação Ltda', fornecedorDocumento: cnpj('171819200001'), objeto: 'Criação e veiculação das campanhas de temporada.', dataInicio: em(-260), dataFim: em(100), dataBaseReajuste: em(-260), valorMensal: 12500 }, CTX, hoje)
     await encerrarContrato(ADMIN, c.id, { versao: c.versao, data: em(-20), justificativa: 'Campanhas passaram a ser feitas pela equipe interna.' }, CTX, hoje)
+    encerradoId = c.id
     console.log(`  ${c.codigo}  encerrado`)
   }
 
@@ -238,6 +242,75 @@ async function main() {
   await obrigacao('Sistema de vendas de passagens', 'Reunião trimestral de nível de serviço', 'TI', 22, 'Por evento')
   await obrigacao('Vigilância patrimonial – Garagens', 'Renovação da apólice de responsabilidade civil', 'Administrativo', 60, 'Anual')
   await obrigacao('Assessoria jurídica trabalhista', 'Relatório mensal de processos', 'Thiago Ribeiro', -8, 'Mensal')
+
+  // Tarefas: avulsas e vinculadas (inclusive ao restrito e ao encerrado), em todas as colunas,
+  // algumas com o caminho percorrido (mover) e uma excluída -- tudo aparece na Auditoria.
+  const tarefa = async (
+    titulo: string,
+    extra: { descricao?: string; responsavel?: string; prazo?: number; contratoId?: string; mover?: ColunaTarefa[]; excluir?: string } = {},
+  ) => {
+    const quem = extra.contratoId === pegar('Assessoria jurídica trabalhista').id ? ADMIN : GESTOR
+    const t = await criarTarefa(
+      quem,
+      {
+        titulo,
+        descricao: extra.descricao ?? null,
+        responsavel: extra.responsavel ?? null,
+        prazo: extra.prazo === undefined ? null : em(extra.prazo),
+        coluna: 'A fazer',
+        contratoId: extra.contratoId ?? null,
+      },
+      CTX,
+      hoje,
+    )
+    for (const coluna of extra.mover ?? []) await moverTarefa(quem, t.id, coluna, CTX, hoje)
+    if (extra.excluir) await removerTarefa(quem, t.id, extra.excluir, CTX)
+  }
+  await tarefa('Revisar minuta do novo contrato de vigilância', {
+    descricao: 'Conferir cláusulas de reajuste e multa antes da assinatura.',
+    responsavel: 'Mariana Kowalski',
+    prazo: 7,
+    contratoId: pegar('Vigilância patrimonial – Garagens').id,
+  })
+  await tarefa('Levantar contratos sem documento assinado', { responsavel: 'Thiago Ribeiro', prazo: 20 })
+  await tarefa('Cotar nova fornecedora de energia', {
+    descricao: 'Pedir ao menos três propostas no mercado livre.',
+    responsavel: 'Juliana Prado',
+    prazo: -3,
+    contratoId: pegar('Energia – Garagem Matriz').id,
+  })
+  await tarefa('Atualizar modelo padrão de aditivo', { responsavel: 'Jurídico' })
+  await tarefa('Negociar reajuste do aluguel da sede', {
+    descricao: 'Proposta do locador: IGP-M cheio. Contraproposta: IPCA.',
+    responsavel: 'Rafael Andrade',
+    prazo: 30,
+    contratoId: pegar('Locação – Sede Administrativa').id,
+    mover: ['Em andamento'],
+  })
+  await tarefa('Preparar defesa – reclamatória 0001234-56', {
+    responsavel: 'Thiago Ribeiro',
+    prazo: 12,
+    contratoId: pegar('Assessoria jurídica trabalhista').id,
+    mover: ['Em andamento'],
+  })
+  await tarefa('Treinamento de gestores sobre prazos de aviso', { responsavel: 'Patrícia Nogueira', prazo: -1, mover: ['Em andamento'] })
+  await tarefa('Arquivar documentos da agência de publicidade', {
+    responsavel: 'Administrativo',
+    contratoId: encerradoId,
+    mover: ['Em andamento', 'Concluída'],
+  })
+  await tarefa('Enviar aviso de não renovação dos links de dados', {
+    responsavel: 'Eduardo Lemos',
+    contratoId: pegar('Telecom – Links de dados').id,
+    mover: ['Concluída'],
+  })
+  await tarefa('Conferir certidões negativas da limpeza', {
+    responsavel: 'Jurídico',
+    contratoId: pegar('Limpeza e conservação – Rodoviárias').id,
+    mover: ['Em andamento', 'Concluída', 'Em andamento'],
+  })
+  await tarefa('Revisar contrato de telecom', { excluir: 'Duplicada de "Enviar aviso de não renovação dos links de dados".' })
+  console.log('  tarefas: 10 no quadro (e 1 excluída, só na auditoria)')
 
   // Alertas: o envio de hoje, como o worker faria às 07:00 (em arquivos .eml).
   const alertas = await executarAlertas({ hoje })

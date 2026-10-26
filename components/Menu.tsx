@@ -10,6 +10,7 @@ import { sair, useUsuario } from './ProvedorUsuario'
 const ICONES: Record<string, string> = {
   livro: 'M4 4h11a3 3 0 013 3v13H7a3 3 0 01-3-3zM7 20a3 3 0 01-3-3M8 8h7M8 12h7',
   lista: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  quadro: 'M4 4h16v16H4zM9.33 4v16M14.67 4v16',
   sino: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0',
   sair: 'M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9',
   relogio: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3.5 2',
