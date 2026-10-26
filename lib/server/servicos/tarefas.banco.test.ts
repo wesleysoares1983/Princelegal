@@ -21,6 +21,7 @@ const { auditoria, opcoesCadastro, tarefas } = await import('../db/esquema')
 const { ErroApi } = await import('../http/erros')
 const { auditoriaDoContrato, criarContrato, encerrarContrato } = await import('./contratos')
 const { criarTarefa, listarTarefas, moverTarefa, removerTarefa } = await import('./tarefas')
+const { listarAuditoria } = await import('./painel')
 
 afterAll(fecharBanco)
 
@@ -218,6 +219,21 @@ describe('vínculo com contrato', () => {
     await moverTarefa(ADMIN, t.id, 'Concluída', CTX, HOJE)
     const doContrato = await auditoriaDoContrato(ADMIN, c.id, { pagina: 1, porPagina: 50, incluirAcessos: false })
     expect(doContrato.itens.some((e) => e.categoria === 'tarefa')).toBe(false)
+  })
+
+  it('auditoria geral: leitor vê os eventos de tarefa, sem `dados`; admin recebe `dados`', async () => {
+    const c = await novoContrato({ acessoRestrito: true })
+    const t = await nova({ titulo: 'Tarefa do restrito', contratoId: c.id })
+    const filtro = { pagina: 1, porPagina: 200, categoria: 'tarefa' as const, busca: 'Tarefa do restrito', incluirAcessos: false }
+
+    const doLeitor = await listarAuditoria(LEITOR, filtro)
+    expect(doLeitor.itens).toHaveLength(1)
+    expect(doLeitor.itens[0]).toMatchObject({ acao: 'tarefa.criada', contrato: null, dados: null })
+    expect(JSON.stringify(doLeitor)).not.toContain(c.id)
+    expect(doLeitor.facetas.usuarios.some((u) => u.matricula === 'TA')).toBe(true)
+
+    const doAdmin = await listarAuditoria(ADMIN, filtro)
+    expect(doAdmin.itens[0].dados).toEqual({ tarefaId: t.id, contratoId: c.id })
   })
 })
 
