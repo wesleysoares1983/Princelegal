@@ -57,6 +57,13 @@
       "when": 1791571716578,
       "tag": "0007_alertas_enviados",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793019868536,
+      "tag": "0008_tarefas",
+      "breakpoints": true
     }
   ]
 }
