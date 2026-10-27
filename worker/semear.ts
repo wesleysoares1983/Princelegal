@@ -5,17 +5,21 @@
  * enviados -- para apresentar o sistema.
  *
  *   npm run db:seed              recusa se já houver contratos no banco
- *   npm run db:seed -- --forcar  semeia mesmo assim (duplica o conjunto)
+ *   npm run db:seed -- --forcar  apaga todos os dados (menos as opções de
+ *                                cadastro) e os arquivos enviados, e semeia de novo
  *
  * Passa pelos mesmos serviços das telas: auditoria, códigos e regras saem
  * iguais aos de um cadastro de verdade. Por isso NÃO há como desfazer pelo
- * sistema (a auditoria é só de inclusão): para limpar, recrie o banco.
+ * sistema (a auditoria é só de inclusão): o --forcar desliga o gatilho da
+ * auditoria só durante o TRUNCATE, na mesma transação.
  *
  * Nunca roda com NODE_ENV=production. Os e-mails de alerta vão para arquivos
  * .eml em .dados/emails (o SMTP do .env é ignorado aqui), e os destinatários
  * são endereços fictícios (@exemplo.com.br).
  */
 import { existsSync } from 'node:fs'
+import { rm } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { sql } from 'drizzle-orm'
 import type { DadosCriarContrato } from '@/lib/shared/contratos'
 import { hojeSP, somarDias } from '@/lib/shared/datas'
@@ -122,9 +126,11 @@ async function main() {
     process.exit(1)
   }
   // Import depois do ajuste do SMTP: a configuração é lida (e memorizada) no primeiro uso.
-  const { configBanco } = await import('@/lib/server/config')
+  const { configArmazenamento, configBanco } = await import('@/lib/server/config')
   const { db, fecharBanco } = await import('@/lib/server/db/cliente')
-  const { contratos, opcoesCadastro } = await import('@/lib/server/db/esquema')
+  const { alertasEnviados, auditoria, contratoVigencias, contratos, documentoVersoes, documentos, obrigacoes, opcoesCadastro, tarefas } = await import(
+    '@/lib/server/db/esquema'
+  )
   const { validarArquivo } = await import('@/lib/server/http/upload')
   const { criarContrato, encerrarContrato } = await import('@/lib/server/servicos/contratos')
   const { registrarAditivo, renovarContrato } = await import('@/lib/server/servicos/aditivos')
@@ -135,10 +141,24 @@ async function main() {
 
   const banco = configBanco()
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(contratos)
-  if (n > 0 && !process.argv.includes('--forcar')) {
-    console.error(`O banco ${banco.host}/${banco.database} já tem ${n} contrato(s). Nada foi feito.\nPara semear mesmo assim (duplica o conjunto): npm run db:seed -- --forcar`)
+  const forcar = process.argv.includes('--forcar')
+  if (n > 0 && !forcar) {
+    console.error(`O banco ${banco.host}/${banco.database} já tem ${n} contrato(s). Nada foi feito.\nPara apagar tudo e semear de novo: npm run db:seed -- --forcar`)
     await fecharBanco()
     process.exit(1)
+  }
+  if (forcar) {
+    // Opções de cadastro ficam: o seed depende delas e quem mantém é o administrador.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`ALTER TABLE ${auditoria} DISABLE TRIGGER auditoria_sem_truncate`)
+      await tx.execute(
+        sql`TRUNCATE ${auditoria}, ${alertasEnviados}, ${tarefas}, ${obrigacoes}, ${documentoVersoes}, ${documentos}, ${contratoVigencias}, ${contratos} RESTART IDENTITY CASCADE`,
+      )
+      await tx.execute(sql`ALTER TABLE ${auditoria} ENABLE TRIGGER auditoria_sem_truncate`)
+      await tx.execute(sql`ALTER SEQUENCE contrato_codigo_seq RESTART`)
+    })
+    await rm(resolve(configArmazenamento().diretorio, 'contratos'), { recursive: true, force: true })
+    console.log(`Dados anteriores apagados (${n} contrato(s) e arquivos enviados).`)
   }
   console.log(`Semeando ${banco.host}/${banco.database}…`)
 
