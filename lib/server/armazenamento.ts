@@ -5,14 +5,15 @@ import { mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { Readable } from 'node:stream'
 import { configArmazenamento } from './config'
+import type { ArquivoValidado, FormatoArquivo } from './http/upload'
 
 /**
  * Onde os arquivos enviados moram: uma pasta no disco (em producao, o volume
  * do Docker). Interface pequena de proposito -- trocar por S3 depois e
  * reimplementar estas funcoes.
  *
- * - Chaves sao geradas pelo servidor (`contratos/<uuid>/<uuid>`) e validadas
- *   aqui: nada vindo do usuario vira caminho no disco.
+ * - Chaves sao geradas pelo servidor (`contratos/<uuid>/<nome>-<uuid>.<ext>`) e
+ *   validadas aqui: o nome original entra so depois de saneado, nunca como pasta.
  * - Gravacao em dois passos: `gravarTemporario` escreve em `.tmp/` (mesmo
  *   disco) e `efetivar` move para a chave final com `rename`, que e atomico.
  *   O servico efetiva DENTRO da transacao do banco, antes do commit: se o
@@ -20,8 +21,11 @@ import { configArmazenamento } from './config'
  *   nunca sobra linha apontando para arquivo que nao existe.
  */
 
-const RE_CHAVE = /^contratos\/[0-9a-f-]{36}\/[0-9a-f-]{36}$/
+// `<radical>` e opcional e a extensao tambem: chaves antigas eram so o uuid.
+const RE_CHAVE = /^contratos\/[0-9a-f-]{36}\/(?:[\p{L}\p{N} ._()-]{1,50}-)?[0-9a-f-]{36}(?:\.(?:pdf|docx?))?$/u
 const PASTA_TEMP = '.tmp'
+// 50 caracteres de ate 4 bytes + uuid + extensao cabem nos 255 bytes de um nome de arquivo.
+const MAX_RADICAL = 50
 
 function raiz(): string {
   return resolve(configArmazenamento().diretorio)
@@ -35,8 +39,25 @@ function caminhoDaChave(chave: string): string {
   return caminho
 }
 
-export function novaChave(contratoId: string): string {
-  return `contratos/${contratoId}/${randomUUID()}`
+/**
+ * Radical do nome original seguro para o disco: so letras, numeros, espaco e
+ * `._()-` (nada de `<>:"|?*` nem separadores de pasta).
+ */
+function radicalSeguro(nomeArquivo: string): string {
+  return Array.from(
+    nomeArquivo
+      .normalize('NFC')
+      .replace(/\.[^.]*$/, '')
+      .replace(/[^\p{L}\p{N} ._()-]/gu, '_'),
+  )
+    .slice(0, MAX_RADICAL)
+    .join('')
+}
+
+/** `contratos/<contratoId>/<nome original>-<uuid>.<extensao>` -- o uuid evita colisao. */
+export function novaChave(contratoId: string, nomeArquivo: string, formato: FormatoArquivo): string {
+  const radical = radicalSeguro(nomeArquivo)
+  return `contratos/${contratoId}/${radical ? `${radical}-` : ''}${randomUUID()}.${formato}`
 }
 
 /**
@@ -123,9 +144,9 @@ export class Gravacao {
   private readonly efetivadas: string[] = []
 
   /** Grava os bytes e devolve a chave final (ja efetivada). */
-  async gravar(contratoId: string, bytes: Uint8Array): Promise<string> {
-    const temporario = await gravarTemporario(bytes)
-    const chave = novaChave(contratoId)
+  async gravar(contratoId: string, arquivo: Pick<ArquivoValidado, 'bytes' | 'nomeArquivo' | 'formato'>): Promise<string> {
+    const temporario = await gravarTemporario(arquivo.bytes)
+    const chave = novaChave(contratoId, arquivo.nomeArquivo, arquivo.formato)
     try {
       await efetivar(temporario, chave)
     } catch (erro) {

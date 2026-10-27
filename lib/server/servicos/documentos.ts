@@ -124,7 +124,7 @@ export async function inserirDocumento(
   const quem = carimboDe(usuario)
   const nome = dados.nome ?? dados.arquivo.nomeArquivo
   const [doc] = await tx.insert(documentos).values({ contratoId, tipo: dados.tipo, nome, versaoAtual: 1 }).returning()
-  const chave = await gravacao.gravar(contratoId, dados.arquivo.bytes)
+  const chave = await gravacao.gravar(contratoId, dados.arquivo)
   const [versao] = await tx
     .insert(documentoVersoes)
     .values({
@@ -189,7 +189,7 @@ export async function enviarNovaVersao(
 
       const proxima = d.versaoAtual + 1
       const quem = carimboDe(usuario)
-      const chave = await gravacao.gravar(c.id, arquivo.bytes)
+      const chave = await gravacao.gravar(c.id, arquivo)
       const [nova] = await tx
         .insert(documentoVersoes)
         .values({

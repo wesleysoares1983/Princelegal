@@ -47,7 +47,7 @@ export const documentoVersoes = pgTable(
     mime: text().notNull(),
     tamanhoBytes: bigint({ mode: 'number' }).notNull(),
     sha256: text().notNull(),
-    /** `contratos/<contratoId>/<uuid>` -- gerada pelo servidor. */
+    /** `contratos/<contratoId>/<nome>-<uuid>.<ext>` -- gerada pelo servidor. */
     chaveArmazenamento: text().notNull().unique(),
     enviadoPorMatricula: text().notNull(),
     enviadoPorNome: text().notNull(),
