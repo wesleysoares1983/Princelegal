@@ -1,4 +1,4 @@
-import { podeEscrever, type UsuarioSessao } from '@/lib/usuario'
+import { podeCadastrar, podeEscrever, type UsuarioSessao } from '@/lib/usuario'
 import { erroSemPermissao } from './http/erros'
 
 /**
@@ -16,7 +16,14 @@ export function exigirAdmin(usuario: UsuarioSessao): void {
   if (!ehAdmin(usuario)) throw erroSemPermissao('Apenas administradores podem fazer isto.')
 }
 
-/** Barra o nivel somente leitura em toda escrita (vem antes de qualquer outra regra). */
+/** Cadastro: contrato (criar/editar), obrigacoes e tarefas. Vem antes de qualquer outra regra. */
+export function exigirCadastro(usuario: UsuarioSessao): void {
+  if (!podeCadastrar(usuario)) throw erroSemPermissao('Seu acesso é somente leitura.')
+}
+
+/** Toda escrita fora do cadastro (vem antes de qualquer outra regra). */
 export function exigirEscrita(usuario: UsuarioSessao): void {
-  if (!podeEscrever(usuario)) throw erroSemPermissao('Seu acesso é somente leitura.')
+  if (!podeEscrever(usuario)) {
+    throw erroSemPermissao(podeCadastrar(usuario) ? 'Seu cargo não permite alterar documentos, aditivos nem renovações.' : 'Seu acesso é somente leitura.')
+  }
 }

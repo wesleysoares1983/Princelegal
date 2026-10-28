@@ -1,5 +1,5 @@
 import type { PermissoesContrato } from '@/lib/shared/contratos'
-import { podeEscrever, type UsuarioSessao } from '@/lib/usuario'
+import { podeCadastrar, podeEscrever, type UsuarioSessao } from '@/lib/usuario'
 import { ehAdmin } from './auth'
 
 /**
@@ -40,17 +40,21 @@ export function permissoesDoContrato(
   usuario: UsuarioSessao,
   c: PessoasDoContrato & { encerradoEm: string | null; motivoEncerramento: 'manual' | 'renovado' | null },
 ): PermissoesContrato {
-  // Somente leitura nao faz nada, nem no contrato em que e gestor/juridico.
-  const aberto = c.encerradoEm === null && podeEscrever(usuario)
-  // Chegou ate aqui = pode ver; ver um contrato aberto permite editar (§5.5).
-  const editar = aberto && podeVer(usuario, c)
+  // Somente leitura nao faz nada, nem no contrato em que e gestor/juridico:
+  // `editar` e `escrever` ja dependem do nivel.
+  const aberto = c.encerradoEm === null && podeVer(usuario, c)
+  // Ver um contrato aberto permite editar e mexer nas obrigacoes (§5.5) -- a quem cadastra (admin e funcionario).
+  const editar = aberto && podeCadastrar(usuario)
+  // Documentos, aditivo e renovacao sao so de admin.
+  const escrever = aberto && podeEscrever(usuario)
   return {
     editar,
-    alterarRestricao: aberto && (ehAdmin(usuario) || ehEnvolvido(usuario, c)),
+    alterarRestricao: editar && (ehAdmin(usuario) || ehEnvolvido(usuario, c)),
     encerrar: aberto && ehAdmin(usuario),
     reabrir: c.motivoEncerramento === 'manual' && ehAdmin(usuario),
-    // Aditivo e renovacao chegam no M4; a permissao ja segue a regra deles.
-    registrarAditivo: editar,
-    renovar: editar,
+    registrarAditivo: escrever,
+    renovar: escrever,
+    gerenciarObrigacoes: editar,
+    gerenciarDocumentos: escrever,
   }
 }

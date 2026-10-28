@@ -4,7 +4,7 @@ import { hojeSP } from '@/lib/shared/datas'
 import type { ColunaTarefa, DadosCriarTarefa, FiltroTarefas, QuadroTarefas, Tarefa } from '@/lib/shared/tarefas'
 import type { UsuarioSessao } from '@/lib/usuario'
 import { registrarAuditoria, type ContextoAuditoria } from '../auditoria'
-import { exigirEscrita } from '../auth'
+import { exigirCadastro } from '../auth'
 import { db, type Executor } from '../db/cliente'
 import { contratos, tarefas } from '../db/esquema'
 import { erroNaoEncontrado } from '../http/erros'
@@ -15,7 +15,7 @@ import { carregar, isoInstante, type Linha as LinhaContrato } from './contratos'
 /**
  * Tarefas do quadro (docs/TASKS_IMPLEMENTATION_PLAN.md §5.1).
  *
- * - Todos veem todas as tarefas; só quem escreve (admin) cria, move e exclui.
+ * - Todos veem todas as tarefas; admin e funcionário criam, movem e excluem.
  * - O vínculo com contrato só aparece para quem vê o contrato; para os
  *   demais, a tarefa diz apenas que há um vínculo restrito.
  * - Os eventos vão para a auditoria com `categoria: 'tarefa'` e SEM
@@ -105,7 +105,7 @@ export async function criarTarefa(
   contexto: ContextoAuditoria,
   hoje: string = hojeSP(),
 ): Promise<Tarefa> {
-  exigirEscrita(usuario)
+  exigirCadastro(usuario)
   return db.transaction(async (tx) => {
     // Só vincula contrato que o usuário vê (404 como em qualquer outro caminho).
     const c = dados.contratoId ? await carregar(tx, usuario, dados.contratoId) : null
@@ -146,7 +146,7 @@ export async function moverTarefa(
   contexto: ContextoAuditoria,
   hoje: string = hojeSP(),
 ): Promise<Tarefa> {
-  exigirEscrita(usuario)
+  exigirCadastro(usuario)
   return db.transaction(async (tx) => {
     // Travada: com dois movendo o mesmo cartão, o "de" da auditoria é sempre a coluna real.
     const { t, c } = await carregarTarefa(tx, id, true)
@@ -174,7 +174,7 @@ export async function moverTarefa(
 
 /** Exclusão lógica, com justificativa (fica na linha e na auditoria). */
 export async function removerTarefa(usuario: UsuarioSessao, id: string, justificativa: string, contexto: ContextoAuditoria): Promise<null> {
-  exigirEscrita(usuario)
+  exigirCadastro(usuario)
   return db.transaction(async (tx) => {
     const { t } = await carregarTarefa(tx, id, true)
     const quem = carimboDe(usuario)

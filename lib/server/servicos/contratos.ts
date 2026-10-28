@@ -22,7 +22,7 @@ import { avaliar, dataLimiteAviso, formatarData, formatarMoeda, proximoReajuste 
 import type { UsuarioSessao } from '@/lib/usuario'
 import { comGravacao, type Gravacao } from '../armazenamento'
 import { registrarAuditoria, type ContextoAuditoria } from '../auditoria'
-import { ehAdmin, exigirAdmin, exigirEscrita } from '../auth'
+import { ehAdmin, exigirAdmin, exigirCadastro } from '../auth'
 import { db, type Executor } from '../db/cliente'
 import {
   padraoBusca,
@@ -572,7 +572,7 @@ export async function criarContrato(
   hoje: string = hojeSP(),
   arquivo?: ArquivoValidado,
 ): Promise<ContratoDetalhe> {
-  exigirEscrita(usuario)
+  exigirCadastro(usuario)
   return comGravacao((gravacao) =>
     db.transaction(async (tx) => {
       const novo = await inserirContrato(tx, gravacao, usuario, dados, contexto, {
@@ -661,7 +661,7 @@ export async function editarContrato(
   contexto: ContextoAuditoria,
   hoje: string = hojeSP(),
 ): Promise<ContratoDetalhe> {
-  exigirEscrita(usuario)
+  exigirCadastro(usuario)
   return db.transaction(async (tx) => {
     const atual = await carregar(tx, usuario, id, true)
     if (atual.encerradoEm) throw erroRegraNegocio('Contrato encerrado não pode ser editado.')

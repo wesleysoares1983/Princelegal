@@ -62,7 +62,7 @@ export function AbaObrigacoes({ contrato }: { contrato: ContratoDetalhe }) {
   const { data, isPending, error, refetch } = useObrigacoesDoContrato(contrato.id)
   return (
     <div className="grad-quadro overflow-hidden rounded-xl border" style={{ '--cor-quadro': 'var(--status-atencao)' } as React.CSSProperties}>
-      {contrato.permissoes.editar && <NovaObrigacao contratoId={contrato.id} />}
+      {contrato.permissoes.gerenciarObrigacoes && <NovaObrigacao contratoId={contrato.id} />}
       {contrato.encerramento && (
         <p className="border-b border-borda px-4 py-2 text-[12px] text-tinta-fraca">
           Contrato encerrado: dá para cumprir ou cancelar o que ficou pendente, mas não criar obrigações novas.
@@ -84,7 +84,7 @@ export function AbaObrigacoes({ contrato }: { contrato: ContratoDetalhe }) {
             </thead>
             <tbody>
               {data.map((o) => (
-                <LinhaObrigacao key={o.id} o={o} podeEditar={contrato.permissoes.editar} />
+                <LinhaObrigacao key={o.id} o={o} podeEditar={contrato.permissoes.gerenciarObrigacoes} />
               ))}
               {data.length === 0 && (
                 <tr>

@@ -10,7 +10,7 @@ import { useUsuario } from '@/components/ProvedorUsuario'
 import { caminhoExportarContratos, useContratos } from '@/lib/api/contratos'
 import { FILTROS_STATUS, type FiltroStatus } from '@/lib/shared/contratos'
 import { formatarData, formatarMoeda } from '@/lib/shared/status'
-import { podeEscrever } from '@/lib/usuario'
+import { podeCadastrar } from '@/lib/usuario'
 
 const FILTROS: { valor: FiltroStatus; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todos' },
@@ -39,7 +39,7 @@ export default function ListaContratos() {
  * buscar e paginar acontece no servidor -- inclusive o status, calculado lá.
  */
 function ConteudoListaContratos() {
-  const escreve = podeEscrever(useUsuario())
+  const escreve = podeCadastrar(useUsuario())
   const params = useSearchParams()
   const router = useRouter()
   const caminho = usePathname()

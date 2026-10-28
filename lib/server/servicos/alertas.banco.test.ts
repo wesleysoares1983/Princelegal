@@ -28,7 +28,7 @@ afterAll(fecharBanco)
 const HOJE = '2026-10-09'
 const CTX = { ip: null, userAgent: null }
 const ADMIN: UsuarioSessao = { matricula: 'LA', nome: 'Lia Admin', email: 'lia@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const OUTRO: UsuarioSessao = { matricula: 'LO', nome: 'Léo Outro', email: 'leo@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+const OUTRO: UsuarioSessao = { matricula: 'LO', nome: 'Léo Outro', email: 'leo@x.com', perfil: null, cargo: null, nivel: 'leitura' }
 
 let base: Record<string, unknown>
 let seq = 0

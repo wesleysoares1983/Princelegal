@@ -9,7 +9,7 @@ import { useContratos } from '@/lib/api/contratos'
 import { useCriarTarefa, useMoverTarefa, useRemoverTarefa, useTarefas, type DadosTarefaTela } from '@/lib/api/tarefas'
 import { formatarData } from '@/lib/shared/status'
 import { COLUNAS_TAREFA, LIMITE_CONCLUIDAS_PADRAO, type ColunaTarefa, type Tarefa } from '@/lib/shared/tarefas'
-import { podeEscrever } from '@/lib/usuario'
+import { podeCadastrar } from '@/lib/usuario'
 
 /**
  * Quadro de tarefas e atividades do jurídico (docs/TASKS_IMPLEMENTATION_PLAN.md §6.2).
@@ -185,7 +185,7 @@ function ChipContrato({ t }: { t: Tarefa }) {
 }
 
 export default function Tarefas() {
-  const escreve = podeEscrever(useUsuario())
+  const escreve = podeCadastrar(useUsuario())
   const { data, isPending, error, refetch } = useTarefas()
   const criar = useCriarTarefa()
   const mover = useMoverTarefa()

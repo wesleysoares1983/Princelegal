@@ -83,6 +83,10 @@ export interface PermissoesContrato {
   reabrir: boolean
   registrarAditivo: boolean
   renovar: boolean
+  /** Criar e editar obrigacao (cumprir/cancelar seguem o nivel do usuario, nao o contrato). */
+  gerenciarObrigacoes: boolean
+  /** Enviar, versionar e remover documentos. */
+  gerenciarDocumentos: boolean
 }
 
 export interface ContratoDetalhe {

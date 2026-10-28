@@ -250,7 +250,7 @@ export function AbaDocumentos({ contrato }: { contrato: ContratoDetalhe }) {
   const [verRemovidos, setVerRemovidos] = useState(false)
   const [erro, setErro] = useState('')
   const { data, isPending, error, refetch } = useDocumentos(contrato.id, admin && verRemovidos)
-  const podeEditar = contrato.permissoes.editar
+  const podeEditar = contrato.permissoes.gerenciarDocumentos
 
   return (
     <div className="grad-quadro overflow-hidden rounded-xl border" style={{ '--cor-quadro': 'var(--marca)' } as React.CSSProperties}>

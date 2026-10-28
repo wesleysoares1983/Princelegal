@@ -19,12 +19,13 @@ const SEM_CARGO = '__sem_cargo__'
 const classeInput =
   'rounded-md border border-borda bg-painel-2 px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-fraca focus:border-marca/60 focus:outline-none'
 
-const ROTULO_NIVEL: Record<NivelUsuario, string> = { admin: 'Admin', leitura: 'Somente leitura' }
+const ROTULO_NIVEL: Record<NivelUsuario, string> = { admin: 'Admin', funcionario: 'Funcionário', leitura: 'Somente leitura' }
 
 /**
- * Selo do cargo: so "ADMIN" e administrador; o resto (FUNCIONARIO, o padrao,
- * e cargos que este app nao conhece) entra como somente leitura -- e o selo
- * diz isso, para quem ve um cargo estranho na lista entender o efeito dele aqui.
+ * Selo do cargo: "ADMIN" e administrador, "FUNCIONARIO" (o padrao) e
+ * funcionario; cargo vazio ou que este app nao conhece entra como somente
+ * leitura -- e o selo diz isso, para quem ve um cargo estranho na lista
+ * entender o efeito dele aqui.
  */
 function SeloCargo({ cargo }: { cargo: string | null }) {
   const nivel = nivelDoCargo(cargo)

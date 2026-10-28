@@ -28,7 +28,7 @@ afterAll(fecharBanco)
 const HOJE = '2026-03-15'
 const CTX = { ip: '10.0.0.4', userAgent: 'vitest' }
 const ADMIN: UsuarioSessao = { matricula: 'TA', nome: 'Tânia Admin', email: 'tania@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const LEITOR: UsuarioSessao = { matricula: 'TL', nome: 'Túlio Leitor', email: 'tulio@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+const LEITOR: UsuarioSessao = { matricula: 'TL', nome: 'Túlio Leitor', email: 'tulio@x.com', perfil: null, cargo: null, nivel: 'leitura' }
 
 async function falha(p: Promise<unknown>, codigo: string) {
   const e = await p.then(
@@ -115,6 +115,18 @@ describe('criar', () => {
     const antes = (await db.select({ n: sql<number>`count(*)::int` }).from(tarefas))[0].n
     await falha(nova({ contratoId: '00000000-0000-4000-8000-000000000000' }), 'NAO_ENCONTRADO')
     expect((await db.select({ n: sql<number>`count(*)::int` }).from(tarefas))[0].n).toBe(antes)
+  })
+})
+
+describe('funcionário (cargo FUNCIONARIO)', () => {
+  const FUNC: UsuarioSessao = { matricula: 'TF', nome: 'Fausto Funcionário', email: 'fausto@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'funcionario' }
+
+  it('cria, move e exclui', async () => {
+    const t = await criarTarefa(FUNC, esquemaCriarTarefa.parse({ titulo: 'Conferir assinaturas', coluna: 'A fazer' }), CTX, HOJE)
+    await moverTarefa(FUNC, t.id, 'Concluída', CTX, HOJE)
+    expect((await quadro(FUNC)).itens.find((i) => i.id === t.id)?.coluna).toBe('Concluída')
+    expect(await removerTarefa(FUNC, t.id, 'Criada por engano', CTX)).toBeNull()
+    expect(await eventos(t.id)).toHaveLength(3)
   })
 })
 

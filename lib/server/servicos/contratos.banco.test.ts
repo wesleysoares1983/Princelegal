@@ -8,6 +8,7 @@ import { db, fecharBanco } from '../db/cliente'
 import { sqlDecisaoUrgente, sqlStatus } from '../db/consultas/contratos'
 import { auditoria, contratos, contratoVigencias, opcoesCadastro } from '../db/esquema'
 import { ErroApi } from '../http/erros'
+import { registrarAditivo } from './aditivos'
 import {
   auditoriaDoContrato,
   criarContrato,
@@ -27,7 +28,7 @@ const CTX = { ip: '10.0.0.9', userAgent: 'vitest' }
 
 const ADMIN: UsuarioSessao = { matricula: 'A1', nome: 'Ana Admin', email: 'ana@empresa.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
 const GESTOR: UsuarioSessao = { matricula: 'G1', nome: 'Gil Gestor', email: 'gil@empresa.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const OUTRO: UsuarioSessao = { matricula: 'O1', nome: 'Olga Outra', email: 'olga@empresa.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+const OUTRO: UsuarioSessao = { matricula: 'O1', nome: 'Olga Outra', email: 'olga@empresa.com', perfil: null, cargo: null, nivel: 'leitura' }
 
 /** Opcoes proprias deste arquivo: nao depende do estado deixado por outros testes. */
 const op: Record<string, string> = {}
@@ -349,9 +350,54 @@ describe('encerrar / reabrir', () => {
   })
 })
 
-describe('somente leitura (cargo FUNCIONARIO)', () => {
+describe('funcionário (cargo FUNCIONARIO)', () => {
+  // Gil (mesmo e-mail do gestor dos contratos de teste) é envolvido; Olga, não.
+  const FUNC_GIL: UsuarioSessao = { matricula: 'F2', nome: 'Gil Funcionário', email: 'gil@empresa.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'funcionario' }
+  const FUNC_OLGA: UsuarioSessao = { matricula: 'F3', nome: 'Olga Funcionária', email: 'olga@empresa.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'funcionario' }
+
+  it('cadastra e edita; documentos, aditivo, renovação e encerramento continuam só de admin', async () => {
+    const c = await criar({}, FUNC_OLGA)
+    const visto = await obterContrato(FUNC_OLGA, c.id, undefined, HOJE)
+    expect(visto.permissoes).toEqual({
+      editar: true,
+      alterarRestricao: false, // não é envolvido
+      encerrar: false,
+      reabrir: false,
+      registrarAditivo: false,
+      renovar: false,
+      gerenciarObrigacoes: true,
+      gerenciarDocumentos: false,
+    })
+    expect((await editarContrato(FUNC_OLGA, c.id, { versao: 1, nome: 'Nome revisto' }, CTX, HOJE)).nome).toBe('Nome revisto')
+    await falha(registrarAditivo(FUNC_OLGA, c.id, { versao: 2, dataInicio: '2026-01-01', dataFim: '2028-12-31', valorMensal: 1 }, CTX, HOJE), 'SEM_PERMISSAO')
+    await falha(encerrarContrato(FUNC_OLGA, c.id, { versao: 2, justificativa: 'Fim do serviço' }, CTX, HOJE), 'SEM_PERMISSAO')
+  })
+
+  it('duplicidade só considera contratos que o usuário vê (não revela restritos)', async () => {
+    const doc = cnpjUnico()
+    await criar({ fornecedorDocumento: doc, acessoRestrito: true }) // do Gil, restrito
+    await criar({ fornecedorDocumento: doc }, FUNC_OLGA) // Olga não vê o restrito: sem aviso
+  })
+
+  it('restrito por quem não é envolvido -> REGRA_NEGOCIO citando o e-mail da sessão', async () => {
+    const e = await falha(criar({ acessoRestrito: true }, FUNC_OLGA), 'REGRA_NEGOCIO')
+    expect(e.message).toContain('olga@empresa.com')
+    await criar({ acessoRestrito: true }, FUNC_GIL) // envolvido: ok
+  })
+
+  it('restrição: só envolvido altera; ninguém se tranca fora', async () => {
+    const c = await criar()
+    await falha(editarContrato(FUNC_OLGA, c.id, { versao: 1, acessoRestrito: true }, CTX, HOJE), 'SEM_PERMISSAO')
+    // Gil restringe e troca o próprio e-mail de gestor: ficaria de fora.
+    await falha(editarContrato(FUNC_GIL, c.id, { versao: 1, acessoRestrito: true, gestorEmail: 'outra@empresa.com' }, CTX, HOJE), 'REGRA_NEGOCIO')
+    const r = await editarContrato(FUNC_GIL, c.id, { versao: 1, acessoRestrito: true }, CTX, HOJE)
+    expect(r.acessoRestrito).toBe(true)
+  })
+})
+
+describe('somente leitura (sem cargo ou cargo desconhecido)', () => {
   // Mesmo e-mail do gestor: envolvido no contrato, e ainda assim só consulta.
-  const LEITOR: UsuarioSessao = { matricula: 'F1', nome: 'Gil Funcionário', email: 'gil@empresa.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+  const LEITOR: UsuarioSessao = { matricula: 'F1', nome: 'Gil Funcionário', email: 'gil@empresa.com', perfil: null, cargo: null, nivel: 'leitura' }
 
   it('vê o contrato restrito em que é envolvido, sem nenhuma permissão de escrita', async () => {
     const c = await criar({ acessoRestrito: true })

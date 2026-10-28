@@ -56,7 +56,7 @@ describe('revalidarSessao', () => {
     const { revalidarSessao } = await modulo()
     const r = await revalidarSessao(sessaoDe(ANA))
     expect(r.tipo).toBe('atualizado')
-    expect(r.tipo === 'atualizado' && r.usuario).toMatchObject({ cargo: 'FUNCIONARIO', nivel: 'leitura' })
+    expect(r.tipo === 'atualizado' && r.usuario).toMatchObject({ cargo: 'FUNCIONARIO', nivel: 'funcionario' })
   })
 
   it('inativo no cadastro central -> revogado', async () => {

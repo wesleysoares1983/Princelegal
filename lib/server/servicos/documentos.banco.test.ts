@@ -27,7 +27,7 @@ const HOJE = '2026-10-09'
 const CTX = { ip: '10.0.0.7', userAgent: 'vitest' }
 const ADMIN: UsuarioSessao = { matricula: 'DA', nome: 'Dora Admin', email: 'dora@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
 const GESTOR: UsuarioSessao = { matricula: 'DG', nome: 'Davi Gestor', email: 'davi@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const OUTRO: UsuarioSessao = { matricula: 'DO', nome: 'Dina Outra', email: 'dina@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+const OUTRO: UsuarioSessao = { matricula: 'DO', nome: 'Dina Outra', email: 'dina@x.com', perfil: null, cargo: null, nivel: 'leitura' }
 
 const pdf = (texto: string) => validarArquivo({ name: `${texto}.pdf`, bytes: new Uint8Array(Buffer.from(`%PDF-1.7\n${texto}\n%%EOF`)) })
 

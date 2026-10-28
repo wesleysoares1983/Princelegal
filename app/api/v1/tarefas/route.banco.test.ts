@@ -19,7 +19,7 @@ const { fecharBanco } = await import('@/lib/server/db/cliente')
 afterAll(fecharBanco)
 
 const ADMIN: UsuarioSessao = { matricula: '1', nome: 'Ana', email: 'a@x', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const COMUM: UsuarioSessao = { ...ADMIN, matricula: '2', cargo: 'FUNCIONARIO', nivel: 'leitura' }
+const COMUM: UsuarioSessao = { ...ADMIN, matricula: '2', cargo: null, nivel: 'leitura' }
 
 const URL_BASE = 'http://localhost/api/v1/tarefas'
 const NAO_EXISTE = '00000000-0000-4000-8000-000000000000'

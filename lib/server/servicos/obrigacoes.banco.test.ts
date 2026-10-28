@@ -23,7 +23,7 @@ const HOJE = '2026-03-15'
 const CTX = { ip: '10.0.0.3', userAgent: 'vitest' }
 const ADMIN: UsuarioSessao = { matricula: 'OA', nome: 'Otto Admin', email: 'otto@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
 const GESTOR: UsuarioSessao = { matricula: 'OG', nome: 'Olívia Gestora', email: 'olivia@x.com', perfil: null, cargo: 'ADMIN', nivel: 'admin' }
-const OUTRO: UsuarioSessao = { matricula: 'OO', nome: 'Oscar Outro', email: 'oscar@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'leitura' }
+const OUTRO: UsuarioSessao = { matricula: 'OO', nome: 'Oscar Outro', email: 'oscar@x.com', perfil: null, cargo: null, nivel: 'leitura' }
 
 async function falha(p: Promise<unknown>, codigo: string): Promise<ErroApi> {
   const e = await p.then(
@@ -132,6 +132,24 @@ describe('desfazer, cancelar, editar', () => {
     const r = await cumprirObrigacao(GESTOR, obrigacao.id, {}, CTX, HOJE)
     expect(r.proxima?.data).toBe('2026-03-10')
     await falha(editarObrigacao(GESTOR, obrigacao.id, { descricao: 'Mudar cumprida' }, CTX, HOJE), 'REGRA_NEGOCIO')
+  })
+})
+
+describe('funcionário (cargo FUNCIONARIO)', () => {
+  const FUNC: UsuarioSessao = { matricula: 'OF', nome: 'Flora Funcionária', email: 'flora@x.com', perfil: null, cargo: 'FUNCIONARIO', nivel: 'funcionario' }
+  const FUNC2: UsuarioSessao = { ...FUNC, matricula: 'OF2', nome: 'Fábio Funcionário', email: 'fabio@x.com' }
+
+  it('cria, edita, cumpre, desfaz o próprio cumprimento e cancela', async () => {
+    const c = await novoContrato()
+    const { obrigacao } = await criarObrigacao(FUNC, c.id, { descricao: 'Relatório mensal', responsavel: 'Flora', data: '2026-01-31', recorrencia: 'Mensal' }, CTX, HOJE)
+    await editarObrigacao(FUNC, obrigacao.id, { responsavel: 'Controladoria' }, CTX, HOJE)
+
+    await cumprirObrigacao(FUNC, obrigacao.id, {}, CTX, HOJE)
+    // Desfazer segue a regra de quem marcou: outro funcionário não desfaz.
+    await falha(desfazerCumprimento(FUNC2, obrigacao.id, CTX, HOJE), 'SEM_PERMISSAO')
+    expect((await desfazerCumprimento(FUNC, obrigacao.id, CTX, HOJE)).situacao).toBe('pendente')
+
+    expect((await cancelarObrigacao(FUNC, obrigacao.id, 'Não se aplica mais', CTX, HOJE)).situacao).toBe('cancelada')
   })
 })
 

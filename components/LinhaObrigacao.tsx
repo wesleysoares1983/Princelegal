@@ -8,7 +8,7 @@ import { useCancelarObrigacao, useCumprirObrigacao, useDesfazerCumprimento, useE
 import { hojeSP } from '@/lib/shared/datas'
 import { RECORRENCIAS, type Obrigacao, type Recorrencia } from '@/lib/shared/obrigacoes'
 import { formatarData } from '@/lib/shared/status'
-import { podeEscrever } from '@/lib/usuario'
+import { podeCadastrar } from '@/lib/usuario'
 
 /**
  * Uma obrigação numa tabela (aba do contrato ou tela geral), com as ações:
@@ -39,7 +39,7 @@ export function LinhaObrigacao({ o, mostrarContrato = false, podeEditar = false 
   const editar = useEditarObrigacao()
   const desfazer = useDesfazerCumprimento()
   const ocupado = cumprir.isPending || cancelar.isPending || editar.isPending || desfazer.isPending
-  const escreve = podeEscrever(usuario)
+  const escreve = podeCadastrar(usuario)
   const podeDesfazer = escreve && o.situacao === 'cumprida' && (usuario?.nivel === 'admin' || o.cumpridaPor?.matricula === usuario?.matricula)
 
   async function executar(acao: () => Promise<unknown>) {

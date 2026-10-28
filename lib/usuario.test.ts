@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { nivelDoCargo, podeEscrever } from './usuario'
+import { nivelDoCargo, podeCadastrar, podeEscrever } from './usuario'
 
 describe('nivelDoCargo', () => {
   it('só o cargo exatamente "ADMIN" é administrador', () => {
     expect(nivelDoCargo('ADMIN')).toBe('admin')
   })
 
-  it.each(['FUNCIONARIO', 'USUARIO', 'admin', 'Admin', ' ADMIN', 'ADMINISTRADOR', 'Supervisor', '', null, undefined])(
+  it('só o cargo exatamente "FUNCIONARIO" é funcionário', () => {
+    expect(nivelDoCargo('FUNCIONARIO')).toBe('funcionario')
+  })
+
+  it.each(['USUARIO', 'funcionario', 'FUNCIONARIO ', 'admin', 'Admin', ' ADMIN', 'ADMINISTRADOR', 'Supervisor', '', null, undefined])(
     '%s -> somente leitura',
     (cargo) => {
       expect(nivelDoCargo(cargo)).toBe('leitura')
@@ -14,10 +18,11 @@ describe('nivelDoCargo', () => {
   )
 })
 
-describe('podeEscrever', () => {
-  it('só admin escreve; somente leitura e sem sessão, não', () => {
-    expect(podeEscrever({ nivel: 'admin' })).toBe(true)
-    expect(podeEscrever({ nivel: 'leitura' })).toBe(false)
-    expect(podeEscrever(null)).toBe(false)
+describe('podeCadastrar / podeEscrever', () => {
+  it('admin faz tudo; funcionário só cadastra; somente leitura e sem sessão, nada', () => {
+    expect([podeCadastrar({ nivel: 'admin' }), podeEscrever({ nivel: 'admin' })]).toEqual([true, true])
+    expect([podeCadastrar({ nivel: 'funcionario' }), podeEscrever({ nivel: 'funcionario' })]).toEqual([true, false])
+    expect([podeCadastrar({ nivel: 'leitura' }), podeEscrever({ nivel: 'leitura' })]).toEqual([false, false])
+    expect([podeCadastrar(null), podeEscrever(null)]).toEqual([false, false])
   })
 })

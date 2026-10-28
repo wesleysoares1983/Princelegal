@@ -9,7 +9,7 @@ import {
   limparSessao,
 } from '@/lib/server/sessao'
 import { revalidarSessao } from '@/lib/server/usuariosApp'
-import { podeEscrever, type UsuarioSessao } from '@/lib/usuario'
+import { podeCadastrar, type UsuarioSessao } from '@/lib/usuario'
 
 /**
  * Trava o sistema atras do login, no servidor.
@@ -83,7 +83,7 @@ function seguir(req: NextRequest, headers?: Headers) {
  */
 function paginaBarrada(pathname: string, usuario: UsuarioSessao): string | null {
   if (pathname.startsWith('/configuracoes') && usuario.nivel !== 'admin') return '/'
-  if (pathname.startsWith('/contratos/novo') && !podeEscrever(usuario)) return '/contratos'
+  if (pathname.startsWith('/contratos/novo') && !podeCadastrar(usuario)) return '/contratos'
   return null
 }
 

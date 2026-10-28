@@ -6,11 +6,11 @@ import { useUsuario } from '@/components/ProvedorUsuario'
 import { SeloStatus } from '@/components/SeloStatus'
 import { usePainel } from '@/lib/api/contratos'
 import { formatarData, formatarMoeda } from '@/lib/shared/status'
-import { podeEscrever } from '@/lib/usuario'
+import { podeCadastrar } from '@/lib/usuario'
 
 /** Início: os números da carteira (só contratos que o usuário pode ver). */
 export default function Inicio() {
-  const escreve = podeEscrever(useUsuario())
+  const escreve = podeCadastrar(useUsuario())
   const { data, isPending, error, refetch } = usePainel()
 
   const n = data?.contagens
